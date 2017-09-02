@@ -1,7 +1,7 @@
 package com.shaposhnyk.univerter.map;
 
 /**
- * Created by vlad on 01.09.17.
+ * Test sub-object
  */
 final class MySubObject {
     private final String name;

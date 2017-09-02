@@ -1,7 +1,7 @@
 package com.shaposhnyk.univerter.map;
 
 import com.shaposhnyk.univerter.Builders;
-import com.shaposhnyk.univerter.Convertor;
+import com.shaposhnyk.univerter.Converter;
 import com.shaposhnyk.univerter.Field;
 import org.hamcrest.Matcher;
 
@@ -14,9 +14,9 @@ import static org.hamcrest.CoreMatchers.everyItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Created by vlad on 30.08.17.
+ * Test base class
  */
-public class ConvertorBase {
+public class ConverterBase {
 
     public Field fInt() {
         return Field.Factory.of("int", "ext");
@@ -31,7 +31,7 @@ public class ConvertorBase {
         return Builders.Factory.simpleOf(f, (s, c) -> c.put(f.externalName(), s.getName()));
     }
 
-    public Map<String, Object> assertConvertionOnSome(Convertor<MyObject, Map<String, Object>> conv, Matcher<Object> valueMatcher) {
+    public Map<String, Object> assertConvertionOnSome(Converter<MyObject, Map<String, Object>> conv, Matcher<Object> valueMatcher) {
         MyObject source1 = new MyObject("Some", 42);
         Map<String, Object> work = new ConcurrentHashMap<>(); // disallow nulls
         conv.consume(source1, work);
@@ -41,7 +41,7 @@ public class ConvertorBase {
         return work;
     }
 
-    public Map<String, Object> assertNoConvertionOnNull(Convertor<MyObject, Map<String, Object>> conv) {
+    public Map<String, Object> assertNoConvertionOnNull(Converter<MyObject, Map<String, Object>> conv) {
         MyObject source1 = new MyObject(null, 42);
         Map<String, Object> work = new ConcurrentHashMap<>(); // disallow nulls
         conv.consume(source1, work);

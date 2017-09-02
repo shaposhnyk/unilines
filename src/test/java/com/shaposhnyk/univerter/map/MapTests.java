@@ -16,11 +16,11 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 
 /**
- * Created by vlad on 30.08.17.
+ * Convertion to map tests. This is also useful to output JSONs
  */
-public class MapTests extends ConvertorBase {
+public class MapTests extends ConverterBase {
 
-    TriConsumer<Field, Object, Map<String, Object>> UWRITER = (f, s, ctx) -> ctx.put(f.externalName(), s);
+    private static final TriConsumer<Field, Object, Map<String, Object>> UWRITER = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
     @Test
     public void convertSingleObject() {
@@ -30,11 +30,11 @@ public class MapTests extends ConvertorBase {
 
         Field root = Field.Factory.of("root");
 
-        Convertor<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctxType)
+        Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctxType)
                 .field(of("name", MyObject::getName).withJDecorator(String::toUpperCase))
-                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split("\\,"))))
+                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
-                        .withJTransformer((String s) -> Integer.valueOf(s))
+                        .withJTransformer(Integer::valueOf)
                         .ignoreErrors()
                 ).composer();
 
@@ -55,11 +55,11 @@ public class MapTests extends ConvertorBase {
         Field root = Field.Factory.of("root");
         Field subObjF = Field.Factory.of("subObjF");
 
-        Convertor<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
+        Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
                 .field(of("name", MyObject::getName).withJDecorator(String::toUpperCase))
-                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split("\\,"))))
+                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
-                        .withJTransformer((String s) -> Integer.valueOf(s))
+                        .withJTransformer(Integer::valueOf)
                         .ignoreErrors()
                 )
                 .field(
@@ -89,9 +89,9 @@ public class MapTests extends ConvertorBase {
         Field root = Field.Factory.of("root");
         Field subObjF = Field.Factory.of("myObj");
 
-        Convertor<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
+        Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
                 .field(of("name", MyObject::getName).withJDecorator(String::toUpperCase))
-                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split("\\,"))))
+                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
                         .withJTransformer((String s) -> Integer.valueOf(s))
                         .ignoreErrors()

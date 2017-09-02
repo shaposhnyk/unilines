@@ -1,7 +1,7 @@
 package com.shaposhnyk.univerter
 
 /**
- * Created by vlad on 25.08.17.
+ * Simple mapping field, with factory object
  */
 interface Field {
     fun internalName(): String

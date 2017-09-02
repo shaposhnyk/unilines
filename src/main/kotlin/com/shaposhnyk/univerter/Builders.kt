@@ -6,6 +6,7 @@ import java.util.function.Function
 import java.util.function.Predicate
 
 /**
+ * Builder for final field converting consumers
  * Created by vlad on 25.08.17.
  */
 class Builders {
@@ -15,8 +16,8 @@ class Builders {
      */
     data class Simple<T, C>(val f: Field,
                             val consumer: (T, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Convertor<T, C> {
-        override fun fields(): List<Convertor<*, *>> = listOf()
+        : Field by f, Converter<T, C> {
+        override fun fields(): List<Converter<*, *>> = listOf()
 
         override fun consume(source: T, ctx: C) {
             consumer(source, ctx)
@@ -32,14 +33,14 @@ class Builders {
     }
 
     /**
-     * Convertor, which extracts value from source object, then writes it with a dedicated writer
+     * Converter, which extracts value from source object, then writes it with a dedicated writer
      */
     data class Extracting<T, C, R>(val f: Field,
                                    val extractor: (T) -> R?,
                                    val condition: (R?) -> Boolean = { true },
                                    val writer: (R?, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Convertor<T, C> {
-        override fun fields(): List<Convertor<*, *>> = listOf()
+        : Field by f, Converter<T, C> {
+        override fun fields(): List<Converter<*, *>> = listOf()
 
         override fun consume(source: T, ctx: C) {
             val v1 = extractor(source)
@@ -78,24 +79,24 @@ class Builders {
         }
 
         fun withJDecorator(fx: Function<R, R>): Extracting<T, C, R> {
-            return withDecorator { r -> fx.apply(r) };
+            return withDecorator { r -> fx.apply(r) }
         }
 
         fun withJNullDecorator(fx: Function<R?, R?>): Extracting<T, C, R> {
-            return withNullDecorator { r -> fx.apply(r) };
+            return withNullDecorator { r -> fx.apply(r) }
         }
     }
 
 
     /**
-     * Convertor, which extracts value from source object, then writes it with a dedicated writer
+     * Converter, which extracts value from source object, then writes it with a dedicated writer
      */
     data class UExtracting<T, C, R>(val f: Field,
                                     val extractor: (T) -> R?,
                                     val condition: (R?) -> Boolean = { true },
                                     val writer: (Any?, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Convertor<T, C> {
-        override fun fields(): List<Convertor<*, *>> = listOf()
+        : Field by f, Converter<T, C> {
+        override fun fields(): List<Converter<*, *>> = listOf()
 
         override fun consume(source: T, ctx: C) {
             val v1 = extractor(source)
@@ -153,7 +154,7 @@ class Builders {
         }
 
         fun withJDecorator(fx: Function<R, R>): UExtracting<T, C, R> {
-            return withDecorator { fx.apply(it) };
+            return withDecorator { fx.apply(it) }
         }
 
         /*
