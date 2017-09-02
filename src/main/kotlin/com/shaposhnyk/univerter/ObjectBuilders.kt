@@ -1,5 +1,6 @@
 package com.shaposhnyk.univerter
 
+import java.util.function.BiFunction
 import java.util.function.Function
 
 /**
@@ -23,16 +24,38 @@ class ObjectBuilders {
         override fun fields(): List<Convertor<*, *>> = fields
 
         override fun consume(source: T, ctx: C) {
-            fields.forEach { it.consume(sourceFx(source), ctxFx(ctx)) }
+            val s1 = sourceFx(source)
+            val ctx1 = ctxFx(ctx)
+            fields.forEach { it.consume(s1, ctx1) }
+        }
+
+        fun decorateContext(afterCtx: (Z) -> Z): Composing<T, C, R, Z> {
+            return Composing(f, fields, sourceFx, { c: C -> afterCtx(ctxFx(c)) })
+        }
+
+        fun decorateFContext(afterCtx: (Field, Z) -> Z): Composing<T, C, R, Z> {
+            return Composing(f, fields, sourceFx, { c: C -> afterCtx(f, ctxFx(c)) })
+        }
+
+        fun decorateJFContext(afterCtx: BiFunction<Field, Z, Z>): Composing<T, C, R, Z> {
+            return Composing(f, fields, sourceFx, { c: C -> afterCtx.apply(f, ctxFx(c)) })
         }
     }
 
-    data class HBuilder<T, C>(val f: Builders.Simple<T, C>, val fields: MutableList<Convertor<*, *>>) {
+    data class HBuilder<T, C>(val f: Builders.Simple<T, C>, val fields: MutableList<Convertor<T, C>>) {
 
-        fun field(c: Convertor<*, *>) {
+        fun field(c: Convertor<T, C>): HBuilder<T, C> {
             fields.add(c)
+            return this
         }
 
+        fun composer(): Composing<T, C, T, C> {
+            return compose(f.f, fields.toList())
+        }
+
+        fun <E> composer(fx: Function<E, T>): Composing<E, C, T, C> {
+            return composeOnInput(f.f, fields.toList(), fx)
+        }
     }
 
     companion object Factory {

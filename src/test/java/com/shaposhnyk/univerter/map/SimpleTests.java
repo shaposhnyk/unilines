@@ -4,6 +4,7 @@ import com.shaposhnyk.univerter.Builders;
 import com.shaposhnyk.univerter.Convertor;
 import com.shaposhnyk.univerter.Field;
 import com.shaposhnyk.univerter.TriConsumer;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -20,7 +21,7 @@ public class SimpleTests extends ConvertorBase {
     @Test
     public void simpleConverter() {
         Convertor<MyObject, Map<String, Object>> conv = simpleInt();
-        assertConvertionOnSome(conv, equalTo("some"));
+        assertConvertionOnSome(conv, equalTo("Some"));
     }
 
     @Test
@@ -28,7 +29,7 @@ public class SimpleTests extends ConvertorBase {
         Builders.Simple<MyObject, Map<String, Object>> sconv = simpleInt();
         Convertor<MyObject, Map<String, Object>> conv = sconv.withCondition(s -> s.getName() != null);
 
-        assertConvertionOnSome(conv, equalTo("some"));
+        assertConvertionOnSome(conv, equalTo("Some"));
         assertNoConvertionOnNull(conv);
     }
 
@@ -101,10 +102,34 @@ public class SimpleTests extends ConvertorBase {
         Convertor<MyObject, Map<String, Object>> conv1 = Builders.Factory
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getArray())
                 .withJFWriter(writer)
-                .withJDecorator(String::toUpperCase)
+                .withJDecorator(String::toLowerCase)
                 .withJTransformer(s -> Arrays.asList(s.split("\\,")));
 
-        assertConvertionOnSome(conv1, equalTo(Arrays.asList("SOME1", "SOME2")));
+        assertConvertionOnSome(conv1, equalTo(Arrays.asList("some1", "some2")));
         assertNoConvertionOnNull(conv1);
+    }
+
+    @Test
+    public void fUnivExtractorWithIgnoringErrors() {
+        TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
+
+        Builders.UExtracting<MyObject, Map<String, Object>, ?> conv = Builders.Factory
+                .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getNumberLike())
+                .withJTransformer(s -> Integer.valueOf(s))
+                .withJFWriter(writer)
+                .withJDecorator(i -> Integer.valueOf(i.intValue() * 2));
+
+        assertConvertionOnSome(conv, equalTo(Integer.valueOf(6)));
+
+        try {
+            // this will raise an exception
+            assertNoConvertionOnNull(conv);
+            Assert.assertFalse("should fail with NumberFormatException", true);
+        } catch (NumberFormatException e) {
+
+        }
+
+        // this will pass
+        assertNoConvertionOnNull(conv.ignoreErrors());
     }
 }

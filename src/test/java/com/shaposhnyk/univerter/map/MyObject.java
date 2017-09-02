@@ -23,7 +23,7 @@ final class MyObject {
     }
 
     public String getNumberLike() {
-        return name != null ? "notANumber" : "3";
+        return name == null ? "notANumber" : "3";
     }
 
     public int getValue() {

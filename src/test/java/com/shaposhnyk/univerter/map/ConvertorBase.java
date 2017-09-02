@@ -32,7 +32,7 @@ public class ConvertorBase {
     }
 
     public Map<String, Object> assertConvertionOnSome(Convertor<MyObject, Map<String, Object>> conv, Matcher<Object> valueMatcher) {
-        MyObject source1 = new MyObject("some", 42);
+        MyObject source1 = new MyObject("Some", 42);
         Map<String, Object> work = new ConcurrentHashMap<>(); // disallow nulls
         conv.consume(source1, work);
 
