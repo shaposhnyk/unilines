@@ -13,20 +13,24 @@ class ObjectBuilders {
         : Field by conv, Converter<T, C> {
         override fun fields(): List<Converter<*, *>> = listOf(conv)
 
-        override fun consume(source: T, ctx: C) {
-            consumer(source, ctx)
+        override fun consume(source: T?, ctx: C) {
+            if (source != null) consumer(source, ctx)
         }
     }
 
-    data class Composing<T, C, R, Z>(val f: Field, val fields: List<Converter<R, Z>>,
-                                     val sourceFx: (T) -> R, val ctxFx: (C) -> Z)
+    data class Composing<T, C, R, Z>(val f: Field,
+                                     val fields: List<Converter<R, Z>>,
+                                     val sourceFx: (T) -> R,
+                                     val ctxFx: (C) -> Z)
         : Field by f, Converter<T, C> {
         override fun fields(): List<Converter<*, *>> = fields
 
-        override fun consume(source: T, ctx: C) {
-            val s1 = sourceFx(source)
-            val ctx1 = ctxFx(ctx)
-            fields.forEach { it.consume(s1, ctx1) }
+        override fun consume(source: T?, ctx: C) {
+            if (source != null) {
+                val s1 = sourceFx(source)
+                val ctx1 = ctxFx(ctx)
+                fields.forEach { it.consume(s1, ctx1) }
+            }
         }
 
         fun decorateContext(afterCtx: (Z) -> Z): Composing<T, C, R, Z> {
@@ -61,7 +65,7 @@ class ObjectBuilders {
     companion object Factory {
 
         fun <T, C> of(f: Field, source: T?, ctx: C?): HBuilder<T, C> {
-            val simple: Builders.Simple<T, C> = Builders.Simple(f, { t: T, c: C -> Unit })
+            val simple: Builders.Simple<T, C> = Builders.Simple(f)
             return HBuilder(simple, mutableListOf())
         }
 

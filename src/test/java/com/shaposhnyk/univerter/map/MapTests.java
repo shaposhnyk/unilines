@@ -31,10 +31,10 @@ public class MapTests extends ConverterBase {
         Field root = Field.Factory.of("root");
 
         Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctxType)
-                .field(of("name", MyObject::getName).withJDecorator(String::toUpperCase))
-                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split(","))))
+                .field(of("name", MyObject::getName).jDecorate(String::toUpperCase))
+                .field(of("myList", MyObject::getArray).jMap((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
-                        .withJTransformer(Integer::valueOf)
+                        .jMap(Integer::valueOf)
                         .ignoreErrors()
                 ).composer();
 
@@ -56,16 +56,16 @@ public class MapTests extends ConverterBase {
         Field subObjF = Field.Factory.of("subObjF");
 
         Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
-                .field(of("name", MyObject::getName).withJDecorator(String::toUpperCase))
-                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split(","))))
+                .field(of("name", MyObject::getName).jDecorate(String::toUpperCase))
+                .field(of("myList", MyObject::getArray).jMap((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
-                        .withJTransformer(Integer::valueOf)
+                        .jMap(Integer::valueOf)
                         .ignoreErrors()
                 )
                 .field(
                         ObjectBuilders.Factory.of(subObjF, subObject, ctx)
-                                .field(of("subId", MySubObject::getValue).withJTransformer((Integer i) -> i.toString()))
-                                .field(of("subName", MySubObject::getName).withJDecorator(String::toLowerCase))
+                                .field(of("subId", MySubObject::getValue).jMap((Integer i) -> i.toString()))
+                                .field(of("subName", MySubObject::getName).jDecorate(String::toLowerCase))
                                 .composer(MyObject::getSubObejct)
                 )
                 .composer();
@@ -90,16 +90,16 @@ public class MapTests extends ConverterBase {
         Field subObjF = Field.Factory.of("myObj");
 
         Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
-                .field(of("name", MyObject::getName).withJDecorator(String::toUpperCase))
-                .field(of("myList", MyObject::getArray).withJTransformer((String s) -> Arrays.asList(s.split(","))))
+                .field(of("name", MyObject::getName).jDecorate(String::toUpperCase))
+                .field(of("myList", MyObject::getArray).jMap((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
-                        .withJTransformer((String s) -> Integer.valueOf(s))
+                        .jMap((String s) -> Integer.valueOf(s))
                         .ignoreErrors()
                 )
                 .field(
                         ObjectBuilders.Factory.of(subObjF, subObject, ctx)
-                                .field(of("subId", MySubObject::getValue).withJTransformer((Integer i) -> i.toString()))
-                                .field(of("subName", MySubObject::getName).withJDecorator(String::toLowerCase))
+                                .field(of("subId", MySubObject::getValue).jMap((Integer i) -> i.toString()))
+                                .field(of("subName", MySubObject::getName).jDecorate(String::toLowerCase))
                                 .composer(MyObject::getSubObejct)
                                 .decorateJFContext(this::createSubMap)
                 )
@@ -126,6 +126,6 @@ public class MapTests extends ConverterBase {
 
     <T, R> Builders.UExtracting<T, Map<String, Object>, R> of(String extName, Function<T, R> getter) {
         Field f = Field.Factory.of(extName);
-        return Builders.Factory.uniExtractingOf(f, getter).withJFWriter(UWRITER);
+        return Builders.Factory.uniExtractingOf(f, getter).withJWriter(UWRITER);
     }
 }

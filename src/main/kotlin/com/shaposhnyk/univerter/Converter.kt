@@ -6,5 +6,5 @@ package com.shaposhnyk.univerter
 interface Converter<T, C> : Field {
     fun fields(): List<Converter<*, *>>
 
-    fun consume(source: T, ctx: C): Unit
+    fun consume(source: T?, ctx: C): Unit
 }
