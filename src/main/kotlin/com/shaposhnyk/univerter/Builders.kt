@@ -11,7 +11,7 @@ import java.util.function.Function
 class Builders {
 
     /**
-     * Generic convertor, which wraps field and a BiConsumer
+     * Generic converter, which wraps field and a BiConsumer
      */
     data class Simple<T, C>(val f: Field,
                             val consumer: (T?, C) -> Unit = { _, _ -> Unit })
@@ -30,6 +30,16 @@ class Builders {
             return withConsumer { t, c -> if (t != null) newConsumer.accept(t, c) }
         }
 
+        override fun withErrorHandler(errorHandler: (Exception, T?, C) -> Unit): Simple<T, C> {
+            return Simple(f, { t, c ->
+                try {
+                    consumer(t, c)
+                } catch (e: Exception) {
+                    errorHandler(e, t, c)
+                }
+            })
+        }
+
         override fun filter(predicate: (T?, C) -> Boolean): Simple<T, C> {
             return Simple(f, { s, c -> if (predicate(s, c)) this.consume(s, c) })
         }
@@ -41,13 +51,18 @@ class Builders {
     data class Extracting<T, C, R>(val f: Field,
                                    val extractor: (T?) -> R?,
                                    val writer: (R?, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Converter<T, C>, FilteringBuilder<T, C>, PostFilteringBuilder<T, C, R> {
+        : Field by f, Converter<T, C>,
+            FilteringBuilder<T, C>, ExtractingBuilder<T, C, R> {
         override fun fields(): List<Converter<*, *>> = listOf()
 
         override fun consume(source: T?, ctx: C) {
             val v1 = extractor(source)
             writer(v1, ctx)
         }
+
+        /*
+         * Writers
+         */
 
         fun <Z> withWriter(newWriter: (R?, Z) -> Unit): Extracting<T, Z, R> {
             return Extracting(f, extractor, newWriter)
@@ -68,16 +83,27 @@ class Builders {
             return Simple(f, { t, c -> if (predicate(t, c)) this.consume(t, c) })
         }
 
+        override fun withErrorHandler(errorHandler: (Exception, T?, C) -> Unit): Simple<T, C> {
+            return Simple<T, C>(f, { t: T?, c: C -> this.consume(t, c) })
+                    .withErrorHandler(errorHandler)
+        }
+
+        override fun withExtractionErrorHandler(errorHandler: (Exception, T?) -> R?): Extracting<T, C, R> {
+            return Extracting<T, C, R>(f, { t ->
+                try {
+                    extractor(t)
+                } catch (e: Exception) {
+                    errorHandler(e, t)
+                }
+            }, writer)
+        }
+
         override fun postFilter(predicate: (R?) -> Boolean): Extracting<T, C, R> {
             return Extracting(f, extractor, { r, c -> if (predicate(r)) this.writer(r, c) else Unit })
         }
 
-        fun decorate(fx: (R?) -> R?): Extracting<T, C, R> {
+        override fun decorate(fx: (R?) -> R?): Extracting<T, C, R> {
             return Extracting(f, { fx(extractor(it)) }, this.writer)
-        }
-
-        fun jDecorate(fx: Function<R, R>): Extracting<T, C, R> {
-            return decorate { it -> if (it != null) fx.apply(it) else null }
         }
     }
 
@@ -88,7 +114,8 @@ class Builders {
     data class UExtracting<T, C, R>(val f: Field,
                                     val extractor: (T?) -> R?,
                                     val writer: (Any?, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Converter<T, C> {
+        : Field by f, Converter<T, C>,
+            FilteringBuilder<T, C>, ExtractingBuilder<T, C, R> {
         override fun fields(): List<Converter<*, *>> = listOf()
 
         override fun consume(source: T?, ctx: C) {
@@ -114,24 +141,38 @@ class Builders {
         /*
          * Conditions
          */
-
-        fun filter(predicate: (T?) -> Boolean): Simple<T, C> {
-            return Simple(f, { t, c -> if (predicate(t)) this.consume(t, c) })
+        override fun filter(predicate: (T?, C) -> Boolean): Simple<T, C> {
+            return Simple(f, { t, c -> if (predicate(t, c)) this.consume(t, c) })
         }
 
-        fun postFilter(predicate: (R?) -> Boolean): Extracting<T, C, R> {
+        override fun withErrorHandler(errorHandler: (Exception, T?, C) -> Unit): Simple<T, C> {
+            return Simple<T, C>(f, { t: T?, c: C -> this.consume(t, c) })
+                    .withErrorHandler(errorHandler)
+        }
+
+        override fun postFilter(predicate: (R?) -> Boolean): Extracting<T, C, R> {
             return Extracting(f, extractor, { t: R?, c: C -> if (predicate(t)) writer(t, c) })
         }
 
         /*
          * Value decorators
          */
-        fun decorate(fx: (R?) -> R?): UExtracting<T, C, R> {
+        override fun decorate(fx: (R?) -> R?): UExtracting<T, C, R> {
             return UExtracting(f, { fx(extractor(it)) }, writer)
         }
 
-        fun jDecorate(fx: Function<R, R?>): UExtracting<T, C, R> {
+        override fun jDecorate(fx: Function<R, R?>): UExtracting<T, C, R> {
             return decorate { it -> if (it != null) fx.apply(it) else null }
+        }
+
+        override fun withExtractionErrorHandler(errorHandler: (Exception, T?) -> R?): UExtracting<T, C, R> {
+            return UExtracting<T, C, R>(f, { t ->
+                try {
+                    extractor(t)
+                } catch (e: Exception) {
+                    errorHandler(e, t)
+                }
+            }, writer)
         }
 
         fun <U> map(fx: (R?) -> U?): UExtracting<T, C, U> {
@@ -140,16 +181,6 @@ class Builders {
 
         fun <U> jMap(fx: Function<R, U?>): UExtracting<T, C, U> {
             return map { if (it != null) fx.apply(it) else null }
-        }
-
-        fun ignoreErrors(): UExtracting<T, C, R> {
-            return UExtracting(f, { source: T? ->
-                try {
-                    this.extractor(source)
-                } catch (e: Exception) {
-                    null
-                }
-            }, writer)
         }
     }
 

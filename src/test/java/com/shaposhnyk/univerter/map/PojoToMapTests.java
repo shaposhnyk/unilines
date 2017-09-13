@@ -18,7 +18,7 @@ import static org.hamcrest.CoreMatchers.not;
 /**
  * Convertion to map tests. This is also useful to output JSONs
  */
-public class MapTests extends ConverterBase {
+public class PojoToMapTests extends ConverterBase {
 
     private static final TriConsumer<Field, Object, Map<String, Object>> UWRITER = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
@@ -35,8 +35,8 @@ public class MapTests extends ConverterBase {
                 .field(of("myList", MyObject::getArray).jMap((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
                         .jMap(Integer::valueOf)
-                        .ignoreErrors()
-                ).composer();
+                        .silenceExtractionErrors()
+                ).withInputConverter();
 
         composer.consume(input, ctxType);
 
@@ -60,15 +60,15 @@ public class MapTests extends ConverterBase {
                 .field(of("myList", MyObject::getArray).jMap((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
                         .jMap(Integer::valueOf)
-                        .ignoreErrors()
+                        .silenceExtractionErrors()
                 )
                 .field(
                         ObjectBuilders.Factory.of(subObjF, subObject, ctx)
                                 .field(of("subId", MySubObject::getValue).jMap((Integer i) -> i.toString()))
                                 .field(of("subName", MySubObject::getName).jDecorate(String::toLowerCase))
-                                .composer(MyObject::getSubObejct)
+                                .withInputConverter(MyObject::getSubObejct)
                 )
-                .composer();
+                .withInputConverter();
 
         composer.consume(input, ctx);
 
@@ -94,16 +94,16 @@ public class MapTests extends ConverterBase {
                 .field(of("myList", MyObject::getArray).jMap((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
                         .jMap((String s) -> Integer.valueOf(s))
-                        .ignoreErrors()
+                        .silenceExtractionErrors()
                 )
                 .field(
                         ObjectBuilders.Factory.of(subObjF, subObject, ctx)
                                 .field(of("subId", MySubObject::getValue).jMap((Integer i) -> i.toString()))
                                 .field(of("subName", MySubObject::getName).jDecorate(String::toLowerCase))
-                                .composer(MyObject::getSubObejct)
+                                .withInputConverter(MyObject::getSubObejct)
                                 .decorateJFContext(this::createSubMap)
                 )
-                .composer();
+                .withInputConverter();
 
         composer.consume(input, ctx);
 

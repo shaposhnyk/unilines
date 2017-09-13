@@ -53,11 +53,11 @@ class ObjectBuilders {
             return this
         }
 
-        fun composer(): Composing<T, C, T, C> {
+        fun withInputConverter(): Composing<T, C, T, C> {
             return compose(f.f, fields.toList())
         }
 
-        fun <E> composer(fx: Function<E, T>): Composing<E, C, T, C> {
+        fun <E> withInputConverter(fx: Function<E, T>): Composing<E, C, T, C> {
             return composeOnInput(f.f, fields.toList(), fx)
         }
     }
