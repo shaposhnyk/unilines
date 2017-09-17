@@ -1,20 +1,22 @@
-package com.shaposhnyk.univerter
+package com.shaposhnyk.univerter.builders
 
+import com.shaposhnyk.univerter.Converter
+import com.shaposhnyk.univerter.Field
 import java.util.function.BiFunction
 import java.util.function.Function
 
 /**
- * Hierarchical convertors factory
+ * Hierarchical converters factory
  */
-class ObjectBuilders {
+class Objects {
 
     data class Delegating<T, C, R>(val conv: Converter<R, C>,
                                    val consumer: (T, C) -> Unit = { _, _ -> Unit })
         : Field by conv, Converter<T, C> {
         override fun fields(): List<Converter<*, *>> = listOf(conv)
 
-        override fun consume(source: T?, ctx: C) {
-            if (source != null) consumer(source, ctx)
+        override fun consume(sourceObj: T?, workingCtx: C) {
+            if (sourceObj != null) consumer(sourceObj, workingCtx)
         }
     }
 
@@ -25,10 +27,10 @@ class ObjectBuilders {
         : Field by f, Converter<T, C> {
         override fun fields(): List<Converter<*, *>> = fields
 
-        override fun consume(source: T?, ctx: C) {
-            if (source != null) {
-                val s1 = sourceFx(source)
-                val ctx1 = ctxFx(ctx)
+        override fun consume(sourceObj: T?, workingCtx: C) {
+            if (sourceObj != null) {
+                val s1 = sourceFx(sourceObj)
+                val ctx1 = ctxFx(workingCtx)
                 fields.forEach { it.consume(s1, ctx1) }
             }
         }
@@ -46,7 +48,7 @@ class ObjectBuilders {
         }
     }
 
-    data class HBuilder<T, C>(val f: Builders.Simple<T, C>, val fields: MutableList<Converter<T, C>>) {
+    data class HBuilder<T, C>(val f: Simples.Simple<T, C>, val fields: MutableList<Converter<T, C>>) {
 
         fun field(c: Converter<T, C>): HBuilder<T, C> {
             fields.add(c)
@@ -67,19 +69,19 @@ class ObjectBuilders {
 
         fun <E> flatMapJS(fx: Function<E, Iterable<T>>): Converter<E, C> {
             val comps = Composing<T, C, T, C>(f.f, fields.toList(), { it: T -> it }, { it })
-            val simple: Builders.Simple<E, C> = Builders.Simple(f)
+            val simple: Simples.Simple<E, C> = Simples.Simple(f)
             return Delegating<E, C, E>(simple, { e: E, c: C ->
                 fx.apply(e).forEach { t -> comps.consume(t, c) }
             })
         }
     }
 
-    companion object Factory {
+    companion object Builder {
         /**
          * @return hierarchical converter builder, which accepts sub-fields of type Converter<T,C>
          */
         fun <T, C> of(f: Field): HBuilder<T, C> {
-            val simple: Builders.Simple<T, C> = Builders.Simple(f)
+            val simple: Simples.Simple<T, C> = Simples.Simple(f)
             return HBuilder(simple, mutableListOf())
         }
 
@@ -88,7 +90,7 @@ class ObjectBuilders {
          * @return hierarchical converter builder, which accepts sub-fields of type Converter<T,C>
          */
         fun <T, C> of(f: Field, source: T?, ctx: C?): HBuilder<T, C> {
-            val simple: Builders.Simple<T, C> = Builders.Simple(f)
+            val simple: Simples.Simple<T, C> = Simples.Simple(f)
             return HBuilder(simple, mutableListOf())
         }
 
@@ -119,8 +121,12 @@ class ObjectBuilders {
             return Composing(f, fields, { it }, cFx)
         }
 
-        fun <T, C> ofRoot(f: Field): HCBuilder<T, C, T, C> {
+        fun <T, C> ofField(f: Field): HCBuilder<T, C, T, C> {
             return HCBuilder(f, { it }, { it })
+        }
+
+        fun <C0, C1> ofTransformingC(f: Field, cFx: (C0) -> C1): HCBuilder<Any, C0, Any, C1> {
+            return HCBuilder(f, { it }, cFx)
         }
 
         fun <T, C> ofRoot(f: Field, s: T, c: C): HCBuilder<T, C, T, C> {
@@ -128,14 +134,52 @@ class ObjectBuilders {
         }
     }
 
+    interface ComposingBuilder<T0, C0, T1, C1> {
+
+        /**
+         * Adds a field to a convertor builder
+         */
+        fun field(c: Converter<T1, C1>): ComposingBuilder<T0, C0, T1, C1>
+
+        /**
+         * Terminal operation, constructing a converter from the builder
+         */
+        fun build(): Converter<T0, C0>
+    }
+
     data class HCBuilder<T0, C0, T1, C1>(
             val f: Field,
             val sFx: (T0) -> T1,
             val ctxFx: (C0) -> C1,
             val fields: MutableList<Converter<T1, C1>> = mutableListOf()
-    ) {
+    ) : ComposingBuilder<T0, C0, T1, C1> {
+
+        fun <TX> ofSourceType(typeRef: Class<TX>): HCBuilder<TX, C0, TX, C1> {
+            return HCBuilder(f, { it }, ctxFx)
+        }
+
+        fun <TX> ofSourceType(typeSup: () -> TX): HCBuilder<TX, C0, TX, C1> {
+            return HCBuilder(f, { it }, ctxFx)
+        }
+
+        fun <CX> ofContextType(typeRef: Class<CX>): HCBuilder<T0, CX, T1, CX> {
+            return HCBuilder(f, sFx, { it })
+        }
+
+        fun <CX> ofContextType(typeSup: () -> CX): HCBuilder<T0, CX, T1, CX> {
+            return HCBuilder(f, sFx, { it })
+        }
+
         fun <X> mapS(newCtxF: (T1) -> X): HCBuilder<T0, C0, X, C1> {
             return HCBuilder<T0, C0, X, C1>(f, { newCtxF(sFx(it)) }, ctxFx)
+        }
+
+        fun <CX0, CX1> initialMapC(newCtxF: (CX0) -> CX1): HCBuilder<T0, CX0, T1, CX1> {
+            return HCBuilder(f, sFx, newCtxF)
+        }
+
+        fun <CX0, CX1> initialMapCF(newCtxF: (Field, CX0) -> CX1): HCBuilder<T0, CX0, T1, CX1> {
+            return initialMapC { newCtxF(f, it) }
         }
 
         fun <X> mapC(newCtxF: (C1) -> X): HCBuilder<T0, C0, T1, X> {
@@ -150,28 +194,24 @@ class ObjectBuilders {
             return mapS { newSFx(f, it) }
         }
 
-        fun <X> mapJC(newCtxF: Function<C1, X>): HCBuilder<T0, C0, T1, X> {
-            return mapC { newCtxF.apply(it) }
-        }
-
         fun <X> flatMapS(newSFx: (T1) -> Iterable<X>): IHCBuilder<T0, C0, X, C1> {
             return IHCBuilder<T0, C0, X, C1>(f, { newSFx(sFx(it)) }, ctxFx)
         }
 
-        fun field(c: Converter<T1, C1>): HCBuilder<T0, C0, T1, C1> {
+        override fun field(c: Converter<T1, C1>): ComposingBuilder<T0, C0, T1, C1> {
             fields.add(c)
             return this
         }
 
         fun pipeTo(downstream: Converter<T1, C1>): Converter<T0, C0> {
-            return Builders.Simple(f, { t, c ->
+            return Simples.Simple(f, { t, c ->
                 val t1 = if (t != null) sFx(t) else null
                 val c1 = ctxFx(c)
                 downstream.consume(t1, c1)
             })
         }
 
-        fun build(): Converter<T0, C0> {
+        override fun build(): Converter<T0, C0> {
             return Composing(f, fields.toList(), sFx, ctxFx)
         }
     }
@@ -182,13 +222,14 @@ class ObjectBuilders {
             val ctxFx: (C0) -> C1
     ) {
         fun pipeTo(downstream: Converter<T1, C1>): Converter<T0, C0> {
-            return Builders.Simple(f, { t, c ->
+            val simpleConv = Simples.Simple<T0, C0>(f, { t, c ->
                 val t1 = if (t != null) sFx(t) else null
                 if (t1 != null) {
                     val c1 = ctxFx(c)
                     t1.forEach { downstream.consume(it, c1) }
                 }
             })
+            return Delegating(simpleConv, { t, c -> simpleConv.consume(t, c) })
         }
     }
 }

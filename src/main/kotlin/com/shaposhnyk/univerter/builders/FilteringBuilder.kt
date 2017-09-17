@@ -1,5 +1,6 @@
-package com.shaposhnyk.univerter
+package com.shaposhnyk.univerter.builders
 
+import com.shaposhnyk.univerter.Converter
 import java.util.function.Predicate
 
 /**

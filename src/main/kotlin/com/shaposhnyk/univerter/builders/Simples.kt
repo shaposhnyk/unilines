@@ -1,5 +1,8 @@
-package com.shaposhnyk.univerter
+package com.shaposhnyk.univerter.builders
 
+import com.shaposhnyk.univerter.Converter
+import com.shaposhnyk.univerter.Field
+import com.shaposhnyk.univerter.TriConsumer
 import java.util.function.BiConsumer
 import java.util.function.BiFunction
 import java.util.function.Function
@@ -8,7 +11,7 @@ import java.util.function.Function
  * Builder for final field converting consumers
  * Created by vlad on 25.08.17.
  */
-class Builders {
+class Simples {
 
     /**
      * Generic converter, which wraps field and a BiConsumer
@@ -18,8 +21,8 @@ class Builders {
         : Field by f, Converter<T, C>, FilteringBuilder<T, C> {
         override fun fields(): List<Converter<*, *>> = listOf()
 
-        override fun consume(source: T?, ctx: C) {
-            consumer(source, ctx)
+        override fun consume(sourceObj: T?, workingCtx: C) {
+            consumer(sourceObj, workingCtx)
         }
 
         fun <U, Z> withConsumer(newConsumer: (U?, Z) -> Unit): Simple<U, Z> {
@@ -59,9 +62,9 @@ class Builders {
             FilteringBuilder<T, C>, ExtractingBuilder<T, C, R> {
         override fun fields(): List<Converter<*, *>> = listOf()
 
-        override fun consume(source: T?, ctx: C) {
-            val v1 = extractor(source)
-            writer(v1, ctx)
+        override fun consume(sourceObj: T?, workingCtx: C) {
+            val v1 = extractor(sourceObj)
+            writer(v1, workingCtx)
         }
 
         /*
@@ -122,9 +125,9 @@ class Builders {
             FilteringBuilder<T, C>, ExtractingBuilder<T, C, R> {
         override fun fields(): List<Converter<*, *>> = listOf()
 
-        override fun consume(source: T?, ctx: C) {
-            val v1 = extractor(source)
-            writer(v1, ctx)
+        override fun consume(sourceObj: T?, workingCtx: C) {
+            val v1 = extractor(sourceObj)
+            writer(v1, workingCtx)
         }
 
         /*
@@ -188,11 +191,11 @@ class Builders {
         }
     }
 
-    companion object Factory {
+    companion object Builder {
         /**
          * @return most generic convertor which is a function of source object (T) and working context (U)
          */
-        fun <T, U> simpleOf(f: Field): Simple<Any, Any> {
+        fun <T, U> of(f: Field): Simple<Any, Any> {
             return Simple(f)
         }
 
