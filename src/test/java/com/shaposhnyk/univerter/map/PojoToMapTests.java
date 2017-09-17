@@ -63,12 +63,12 @@ public class PojoToMapTests extends ConverterBase {
 
         Converter<String, Map<String, Object>> converter = Objects.Builder.ofField(fItems)
                 .ofSourceType(String.class)
-                .initialMapCF(PojoToMapTests::newListOfMaps)
-                .flatMapS(q -> findObjectsByQuery(q))
+                .ofContextMapF(PojoToMapTests::newListOfMaps)
+                .iterateOn(q -> findObjectsByQuery(q))
                 .pipeTo(
                         Objects.Builder.ofField(fObject)
                                 .ofSourceType(MyObject.class)
-                                .initialMapC(PojoToMapTests::addSubMap)
+                                .ofContextMap(PojoToMapTests::addSubMap)
                                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
                                 .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
                                 .field(of("myInt", MyObject::getNumberLike)
@@ -129,8 +129,9 @@ public class PojoToMapTests extends ConverterBase {
                 .field(
                         // here we suppose that calling myObject.getSubObject() is expensive
                         // so it does make sense to call it once, using simple mapping hierarchical converter
+                        // however, note, that we are still writing the output to the same map
                         Objects.Builder.ofField(subObjF)
-                                .initialMapS(MyObject::getSubObject)
+                                .ofSourceMap(MyObject::getSubObject)
                                 .ofContextType(ctx)
                                 .field(of("subId", MySubObject::getValue).mapJ((Integer i) -> i.toString()))
                                 .field(of("subName", MySubObject::getName).decorateJ(String::toLowerCase))
@@ -168,8 +169,8 @@ public class PojoToMapTests extends ConverterBase {
                 )
                 .field(
                         Objects.Builder.ofField(subObjF)
-                                .initialMapS(MyObject::getSubObject)
-                                .initialMapCF(PojoToMapTests::addSubMapField)
+                                .ofSourceMap(MyObject::getSubObject)
+                                .ofContextMapF(PojoToMapTests::addSubMapField)
                                 .field(of("subId", MySubObject::getValue).mapJ((Integer i) -> i.toString()))
                                 .field(of("subName", MySubObject::getName).decorateJ(String::toLowerCase))
                                 .build()

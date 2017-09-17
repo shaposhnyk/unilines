@@ -34,20 +34,29 @@ class Objects {
         }
     }
 
-    data class Delegating<T, C, R>(val conv: Converter<R, C>,
-                                   val consumer: (T, C) -> Unit = { _, _ -> Unit })
-        : Field by conv, Converter<T, C> {
+    /**
+     * A converter which delegates processing to another converter,
+     * while exposing it in fields()
+     */
+    data class ChainingConverter<T, C>(
+            val conv: Converter<T, C>
+    ) : Field by conv, Converter<T, C> {
         override fun fields(): List<Converter<*, *>> = listOf(conv)
 
         override fun consume(sourceObj: T?, workingCtx: C) {
-            if (sourceObj != null) consumer(sourceObj, workingCtx)
+            if (sourceObj != null) conv.consume(sourceObj, workingCtx)
         }
     }
 
-    data class Composing<T, C, R, Z>(val f: Field,
-                                     val fields: List<Converter<R, Z>>,
-                                     val sourceFx: (T) -> R,
-                                     val ctxFx: (C) -> Z)
+    /**
+     * A converter which delegates processing to several other converters,
+     * while exposing then in fields()
+     */
+    data class DispatchingConverter<T, C, R, Z>(
+            val f: Field,
+            val fields: List<Converter<R, Z>>,
+            val sourceFx: (T) -> R,
+            val ctxFx: (C) -> Z)
         : Field by f, Converter<T, C> {
         override fun fields(): List<Converter<*, *>> = fields
 
@@ -60,109 +69,145 @@ class Objects {
         }
     }
 
-    data class HCBuilder<T0, C0, T1, C1>(
+    /**
+     * Hierarchical converter builder.
+     * Such converter feeds it's input to sub-converters, with eventual transformation
+     * TIN & CIN  - input source object and working context types
+     * TOUT & COUT  - output source object and working context types, also the type of the sub-converters
+     */
+    data class HCBuilder<TIN, CIN, TOUT, COUT>(
             val f: Field,
-            val sFx: (T0) -> T1,
-            val ctxFx: (C0) -> C1,
-            val fields: MutableList<Converter<T1, C1>> = mutableListOf()
-    ) : ComposingBuilder<T0, C0, T1, C1> {
+            val sFx: (TIN) -> TOUT,
+            val ctxFx: (CIN) -> COUT,
+            val fields: MutableList<Converter<TOUT, COUT>> = mutableListOf()
+    ) : ComposingBuilder<TIN, CIN, TOUT, COUT> {
 
         // Input type specifiers. Do nothing. Compilation time type-safety
-        fun <TX> ofSourceType(typeRef: Class<TX>): HCBuilder<TX, C0, TX, C1> {
+
+        /**
+         * Input type specifier. Does nothing, except type inference
+         * @param typeRef - used only for type inference
+         */
+        fun <TX> ofSourceType(typeRef: Class<TX>): HCBuilder<TX, CIN, TX, COUT> {
             return HCBuilder(f, { it }, ctxFx)
         }
 
-        fun <TX> ofSourceType(typeSup: () -> TX): HCBuilder<TX, C0, TX, C1> {
+        /**
+         * Input type specifier. Does nothing, except type inference
+         * @param typeSup - used only for type inference. Never called
+         */
+        fun <TX> ofSourceType(typeSup: () -> TX): HCBuilder<TX, CIN, TX, COUT> {
             return HCBuilder(f, { it }, ctxFx)
         }
 
-        fun <TX> ofSourceType(obj: TX): HCBuilder<TX, C0, TX, C1> {
+        /**
+         * Input type specifier. Does nothing, except type inference
+         * @param obj - used only for type inference
+         */
+        fun <TX> ofSourceType(obj: TX): HCBuilder<TX, CIN, TX, COUT> {
             return HCBuilder(f, { it }, ctxFx)
         }
 
-        fun <CX> ofContextType(typeRef: Class<CX>): HCBuilder<T0, CX, T1, CX> {
+        /**
+         * Working context type specifier. Does nothing, except type inference
+         * @param typeRef - used only for type inference
+         */
+        fun <CX> ofContextType(typeRef: Class<CX>): HCBuilder<TIN, CX, TOUT, CX> {
             return HCBuilder(f, sFx, { it })
         }
 
-        fun <CX> ofContextType(typeSup: () -> CX): HCBuilder<T0, CX, T1, CX> {
+        /**
+         * Working context type specifier. Does nothing, except type inference
+         * @param typeSup - used only for type inference. Never called
+         */
+        fun <CX> ofContextType(typeSup: () -> CX): HCBuilder<TIN, CX, TOUT, CX> {
             return HCBuilder(f, sFx, { it })
         }
 
-        fun <CX> ofContextType(obj: CX): HCBuilder<T0, CX, T1, CX> {
+        /**
+         * Working context type specifier. Does nothing, except type inference
+         * @param obj - used only for type inference
+         */
+        fun <CX> ofContextType(obj: CX): HCBuilder<TIN, CX, TOUT, CX> {
             return HCBuilder(f, sFx, { it })
         }
 
         // Initializers: this will throw out existing converters
 
-        fun <TX0, TX1> initialMapS(newSFx: (TX0) -> TX1): HCBuilder<TX0, C0, TX1, C1> {
+        fun <TX0, TX1> ofSourceMap(newSFx: (TX0) -> TX1): HCBuilder<TX0, CIN, TX1, COUT> {
             return HCBuilder(f, newSFx, ctxFx)
         }
 
-        fun <TX0, TX1> initialMapSF(newSFx: (Field, TX0) -> TX1): HCBuilder<TX0, C0, TX1, C1> {
-            return initialMapS { newSFx(f, it) }
+        fun <TX0, TX1> ofSourceMapF(newSFx: (Field, TX0) -> TX1): HCBuilder<TX0, CIN, TX1, COUT> {
+            return ofSourceMap { newSFx(f, it) }
         }
 
-        fun <CX0, CX1> initialMapC(newCtxF: (CX0) -> CX1): HCBuilder<T0, CX0, T1, CX1> {
+        fun <CX0, CX1> ofContextMap(newCtxF: (CX0) -> CX1): HCBuilder<TIN, CX0, TOUT, CX1> {
             return HCBuilder(f, sFx, newCtxF)
         }
 
-        fun <CX0, CX1> initialMapCF(newCtxF: (Field, CX0) -> CX1): HCBuilder<T0, CX0, T1, CX1> {
-            return initialMapC { newCtxF(f, it) }
+        fun <CX0, CX1> ofContextMapF(newCtxF: (Field, CX0) -> CX1): HCBuilder<TIN, CX0, TOUT, CX1> {
+            return ofContextMap { newCtxF(f, it) }
         }
 
         // Mappers: do input or context transformation
 
-        fun <X> mapS(afterSFx: (T1) -> X): HCBuilder<T0, C0, X, C1> {
-            return HCBuilder<T0, C0, X, C1>(f, { afterSFx(sFx(it)) }, ctxFx)
+        fun <X> mapS(afterSFx: (TOUT) -> X): HCBuilder<TIN, CIN, X, COUT> {
+            return HCBuilder<TIN, CIN, X, COUT>(f, { afterSFx(sFx(it)) }, ctxFx)
         }
 
-        fun <X> mapSF(newSFx: (Field, T1) -> X): HCBuilder<T0, C0, X, C1> {
+        fun <X> mapSF(newSFx: (Field, TOUT) -> X): HCBuilder<TIN, CIN, X, COUT> {
             return mapS { newSFx(f, it) }
         }
 
-        fun <X> mapC(afterCtxFx: (C1) -> X): HCBuilder<T0, C0, T1, X> {
-            return HCBuilder<T0, C0, T1, X>(f, sFx, { afterCtxFx(ctxFx(it)) })
+        fun <X> mapC(afterCtxFx: (COUT) -> X): HCBuilder<TIN, CIN, TOUT, X> {
+            return HCBuilder<TIN, CIN, TOUT, X>(f, sFx, { afterCtxFx(ctxFx(it)) })
         }
 
-        fun <X> mapCF(afterCtxFx: (Field, C1) -> X): HCBuilder<T0, C0, T1, X> {
+        fun <X> mapCF(afterCtxFx: (Field, COUT) -> X): HCBuilder<TIN, CIN, TOUT, X> {
             return mapC { afterCtxFx(f, it) }
         }
 
-        // Iteration transformer
-        fun <X> flatMapS(newSFx: (T1) -> Iterable<X>): IHCBuilder<T0, C0, X, C1> {
-            return IHCBuilder<T0, C0, X, C1>(f, { newSFx(sFx(it)) }, ctxFx)
+        /**
+         * Transform input to an iterable. Every item will be feed to downstream converter
+         */
+        fun <X> iterateOn(afterSFx: (TOUT) -> Iterable<X>): IHCBuilder<TIN, CIN, X, COUT> {
+            return IHCBuilder<TIN, CIN, X, COUT>(f, { afterSFx(sFx(it)) }, ctxFx)
         }
 
         /**
          * Add a sub-converter field to this Builder composed of multiple fields
          * Output of transformation will be propagated to all fields
          */
-        override fun field(conv: Converter<T1, C1>): ComposingBuilder<T0, C0, T1, C1> {
+        override fun field(conv: Converter<TOUT, COUT>): ComposingBuilder<TIN, CIN, TOUT, COUT> {
             fields.add(conv)
             return this
         }
 
-        override fun fields(convs: Collection<Converter<T1, C1>>): ComposingBuilder<T0, C0, T1, C1> {
+        override fun fields(convs: Collection<Converter<TOUT, COUT>>): ComposingBuilder<TIN, CIN, TOUT, COUT> {
             fields.addAll(convs)
             return this
         }
 
-        fun pipeTo(downstream: Converter<T1, C1>): Converter<T0, C0> {
+        /**
+         * Pipe to downstream converter. Same as field(converter).build()
+         */
+        fun pipeTo(downstream: Converter<TOUT, COUT>): Converter<TIN, CIN> {
             if (fields.size > 0) {
                 throw IllegalStateException("pipeTo is mutually exclusive with field()")
             }
-            return Simples.Simple(f, { t, c ->
+            return ChainingConverter(Simples.Simple(f, { t, c ->
                 val t1 = if (t != null) sFx(t) else null
                 val c1 = ctxFx(c)
                 downstream.consume(t1, c1)
-            })
+            }))
         }
 
         /**
          * Builds new converter from the builder
          */
-        override fun build(): Converter<T0, C0> {
-            return Composing(f, fields.toList(), sFx, ctxFx)
+        override fun build(): Converter<TIN, CIN> {
+            return DispatchingConverter(f, fields.toList(), sFx, ctxFx)
         }
     }
 
@@ -179,7 +224,7 @@ class Objects {
                     t1.forEach { downstream.consume(it, c1) }
                 }
             })
-            return Delegating(simpleConv, { t, c -> simpleConv.consume(t, c) })
+            return ChainingConverter(simpleConv)
         }
     }
 }
