@@ -26,8 +26,12 @@ class Builders {
             return Simple(f, { t, c -> newConsumer(t, c) })
         }
 
-        fun <U, Z> withJConsumer(newConsumer: BiConsumer<U, Z>): Simple<U, Z> {
+        fun <U, Z> withConsumerJ(newConsumer: BiConsumer<U, Z>): Simple<U, Z> {
             return withConsumer { t, c -> if (t != null) newConsumer.accept(t, c) }
+        }
+
+        fun <U, Z> withConsumerJF(newConsumer: TriConsumer<Field, U, Z>): Simple<U, Z> {
+            return withConsumer { t, c -> if (t != null) newConsumer.accept(f, t, c) }
         }
 
         override fun withErrorHandler(errorHandler: (Exception, T?, C) -> Unit): Simple<T, C> {
@@ -68,11 +72,11 @@ class Builders {
             return Extracting(f, extractor, newWriter)
         }
 
-        fun <Z> withJWriter(newWriter: BiConsumer<R, Z>): Extracting<T, Z, R> {
+        fun <Z> withWriterJ(newWriter: BiConsumer<R, Z>): Extracting<T, Z, R> {
             return withWriter { r, c -> if (r != null) newWriter.accept(r, c) }
         }
 
-        fun <Z> withJWriter(newWriter: TriConsumer<Field, R, Z>): Extracting<T, Z, R> {
+        fun <Z> withWriterJF(newWriter: TriConsumer<Field, R, Z>): Extracting<T, Z, R> {
             return withWriter { r, c -> if (r != null) newWriter.accept(f, r, c) }
         }
 
@@ -130,11 +134,11 @@ class Builders {
             return UExtracting(f, extractor, newWriter)
         }
 
-        fun <Z> withJWriter(newWriter: BiConsumer<Any, Z>): UExtracting<T, Z, R> {
+        fun <Z> withWriterJ(newWriter: BiConsumer<Any, Z>): UExtracting<T, Z, R> {
             return withWriter { r, c -> if (r != null) newWriter.accept(r, c) }
         }
 
-        fun <Z> withJWriter(newWriter: TriConsumer<Field, Any, Z>): UExtracting<T, Z, R> {
+        fun <Z> withWriterJF(newWriter: TriConsumer<Field, Any, Z>): UExtracting<T, Z, R> {
             return withWriter { r, c -> if (r != null) newWriter.accept(f, r, c) }
         }
 
@@ -161,7 +165,7 @@ class Builders {
             return UExtracting(f, { fx(extractor(it)) }, writer)
         }
 
-        override fun jDecorate(fx: Function<R, R?>): UExtracting<T, C, R> {
+        override fun decorateJ(fx: Function<R, R?>): UExtracting<T, C, R> {
             return decorate { it -> if (it != null) fx.apply(it) else null }
         }
 
@@ -179,7 +183,7 @@ class Builders {
             return UExtracting(f, { it: T? -> fx(extractor(it)) }, writer)
         }
 
-        fun <U> jMap(fx: Function<R, U?>): UExtracting<T, C, U> {
+        fun <U> mapJ(fx: Function<R, U?>): UExtracting<T, C, U> {
             return map { if (it != null) fx.apply(it) else null }
         }
     }

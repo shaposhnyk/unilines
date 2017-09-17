@@ -28,7 +28,7 @@ public class ConverterBase {
 
     public Builders.Simple<MyObject, Map<String, Object>> simpleInt() {
         final Field f = fInt();
-        return Builders.Factory.simpleOf(f).withJConsumer((s, c) -> c.put(f.externalName(), s.getName()));
+        return Builders.Factory.simpleOf(f).withConsumerJ((s, c) -> c.put(f.externalName(), s.getName()));
     }
 
     public Map<String, Object> assertConvertionOnSome(Converter<MyObject, Map<String, Object>> conv, Matcher<Object> valueMatcher) {

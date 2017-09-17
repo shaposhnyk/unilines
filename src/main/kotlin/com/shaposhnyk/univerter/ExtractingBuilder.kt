@@ -13,7 +13,7 @@ interface ExtractingBuilder<T, C, R> : Converter<T, C> {
      */
     fun postFilter(predicate: (R?) -> Boolean): ExtractingBuilder<T, C, R>
 
-    fun jPostFilter(predicate: Predicate<R?>): ExtractingBuilder<T, C, R> {
+    fun postFilterJ(predicate: Predicate<R?>): ExtractingBuilder<T, C, R> {
         return postFilter { r -> predicate.test(r) }
     }
 
@@ -22,7 +22,7 @@ interface ExtractingBuilder<T, C, R> : Converter<T, C> {
      */
     fun decorate(fx: (R?) -> R?): ExtractingBuilder<T, C, R>
 
-    fun jDecorate(fx: Function<R, R?>): ExtractingBuilder<T, C, R> {
+    fun decorateJ(fx: Function<R, R?>): ExtractingBuilder<T, C, R> {
         return decorate { it -> if (it != null) fx.apply(it) else null }
     }
 

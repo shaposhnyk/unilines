@@ -24,7 +24,7 @@ public class SimpleTests extends ConverterBase {
     @Test
     public void simpleConverterWithCondition() {
         Builders.Simple<MyObject, Map<String, Object>> sconv = simpleInt();
-        Converter<MyObject, Map<String, Object>> conv = sconv.jFilterS(s -> s.getName() != null);
+        Converter<MyObject, Map<String, Object>> conv = sconv.filterJS(s -> s.getName() != null);
 
         assertConvertionOnSome(conv, equalTo("Some"));
         assertNoConvertionOnNull(conv);
@@ -36,8 +36,8 @@ public class SimpleTests extends ConverterBase {
 
         ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Builders.Factory
                 .extractingOf(fInt(), MyObject::getName)
-                .withJWriter(writer)
-                .jDecorate(String::toUpperCase);
+                .withWriterJ(writer)
+                .decorateJ(String::toUpperCase);
 
         assertConvertionOnSome(conv, equalTo("SOME"));
         assertNoConvertionOnNull(conv);
@@ -49,8 +49,8 @@ public class SimpleTests extends ConverterBase {
 
         ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Builders.Factory
                 .uniExtractingOf(fInt(), MyObject::getName)
-                .withJWriter(writer)
-                .jDecorate(String::toUpperCase);
+                .withWriterJF(writer)
+                .decorateJ(String::toUpperCase);
 
         assertConvertionOnSome(conv, equalTo("SOME"));
         assertNoConvertionOnNull(conv);
@@ -63,8 +63,8 @@ public class SimpleTests extends ConverterBase {
 
         ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Builders.Factory
                 .uniExtractingOf(fInt(), MyObject::getName)
-                .withJWriter(writer)
-                .jDecorate(String::toUpperCase);
+                .withWriterJF(writer)
+                .decorateJ(String::toUpperCase);
 
         assertConvertionOnSome(conv, equalTo("SOME"));
         assertNoConvertionOnNull(conv);
@@ -76,8 +76,8 @@ public class SimpleTests extends ConverterBase {
 
         Converter<MyObject, Map<String, Object>> conv = Builders.Factory
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getName())
-                .withJWriter(writer)
-                .jDecorate(String::toUpperCase);
+                .withWriterJF(writer)
+                .decorateJ(String::toUpperCase);
 
         assertConvertionOnSome(conv, equalTo("SOME"));
         assertNoConvertionOnNull(conv);
@@ -89,9 +89,9 @@ public class SimpleTests extends ConverterBase {
 
         Converter<MyObject, Map<String, Object>> conv = Builders.Factory
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getArray())
-                .jDecorate(String::toUpperCase)
-                .jMap(s -> Arrays.asList(s.split(",")))
-                .withJWriter(writer);
+                .decorateJ(String::toUpperCase)
+                .mapJ(s -> Arrays.asList(s.split(",")))
+                .withWriterJF(writer);
 
         assertConvertionOnSome(conv, equalTo(Arrays.asList("SOME1", "SOME2")));
         assertNoConvertionOnNull(conv);
@@ -99,9 +99,9 @@ public class SimpleTests extends ConverterBase {
         // place of writer is unimportant
         Converter<MyObject, Map<String, Object>> conv1 = Builders.Factory
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getArray())
-                .withJWriter(writer)
-                .jDecorate(String::toLowerCase)
-                .jMap(s -> Arrays.asList(s.split(",")));
+                .withWriterJF(writer)
+                .decorateJ(String::toLowerCase)
+                .mapJ(s -> Arrays.asList(s.split(",")));
 
         assertConvertionOnSome(conv1, equalTo(Arrays.asList("some1", "some2")));
         assertNoConvertionOnNull(conv1);
@@ -113,9 +113,9 @@ public class SimpleTests extends ConverterBase {
 
         Builders.UExtracting<MyObject, Map<String, Object>, ?> conv = Builders.Factory
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getNumberLike())
-                .jMap(s -> Integer.valueOf(s))
-                .withJWriter(writer)
-                .jDecorate(i -> i * 2);
+                .mapJ(s -> Integer.valueOf(s))
+                .withWriterJF(writer)
+                .decorateJ(i -> i * 2);
 
         assertConvertionOnSome(conv, equalTo(6));
 
