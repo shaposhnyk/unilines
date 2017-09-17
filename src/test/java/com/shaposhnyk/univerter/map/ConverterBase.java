@@ -1,8 +1,8 @@
 package com.shaposhnyk.univerter.map;
 
-import com.shaposhnyk.univerter.Builders;
 import com.shaposhnyk.univerter.Converter;
 import com.shaposhnyk.univerter.Field;
+import com.shaposhnyk.univerter.builders.Simples;
 import org.hamcrest.Matcher;
 
 import java.util.Collections;
@@ -26,9 +26,9 @@ public class ConverterBase {
         return Field.Factory.of("name", "displayName");
     }
 
-    public Builders.Simple<MyObject, Map<String, Object>> simpleInt() {
+    public Simples.Simple<MyObject, Map<String, Object>> simpleInt() {
         final Field f = fInt();
-        return Builders.Factory.simpleOf(f).withConsumerJ((s, c) -> c.put(f.externalName(), s.getName()));
+        return Simples.Builder.of(f).withConsumerJ((s, c) -> c.put(f.externalName(), s.getName()));
     }
 
     public Map<String, Object> assertConvertionOnSome(Converter<MyObject, Map<String, Object>> conv, Matcher<Object> valueMatcher) {

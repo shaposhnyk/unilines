@@ -1,6 +1,10 @@
 package com.shaposhnyk.univerter.map;
 
-import com.shaposhnyk.univerter.*;
+import com.shaposhnyk.univerter.Converter;
+import com.shaposhnyk.univerter.Field;
+import com.shaposhnyk.univerter.TriConsumer;
+import com.shaposhnyk.univerter.builders.ExtractingBuilder;
+import com.shaposhnyk.univerter.builders.Simples;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -23,7 +27,7 @@ public class SimpleTests extends ConverterBase {
 
     @Test
     public void simpleConverterWithCondition() {
-        Builders.Simple<MyObject, Map<String, Object>> sconv = simpleInt();
+        Simples.Simple<MyObject, Map<String, Object>> sconv = simpleInt();
         Converter<MyObject, Map<String, Object>> conv = sconv.filterJS(s -> s.getName() != null);
 
         assertConvertionOnSome(conv, equalTo("Some"));
@@ -34,7 +38,7 @@ public class SimpleTests extends ConverterBase {
     public void extractingWithDecorator() {
         BiConsumer<String, Map<String, Object>> writer = (s, ctx) -> ctx.put(fInt().externalName(), s);
 
-        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Builders.Factory
+        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Simples.Builder
                 .extractingOf(fInt(), MyObject::getName)
                 .withWriterJ(writer)
                 .decorateJ(String::toUpperCase);
@@ -47,7 +51,7 @@ public class SimpleTests extends ConverterBase {
     public void univExtractorWithDecorator() {
         TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Builders.Factory
+        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Simples.Builder
                 .uniExtractingOf(fInt(), MyObject::getName)
                 .withWriterJF(writer)
                 .decorateJ(String::toUpperCase);
@@ -61,7 +65,7 @@ public class SimpleTests extends ConverterBase {
         TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
 
-        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Builders.Factory
+        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Simples.Builder
                 .uniExtractingOf(fInt(), MyObject::getName)
                 .withWriterJF(writer)
                 .decorateJ(String::toUpperCase);
@@ -74,7 +78,7 @@ public class SimpleTests extends ConverterBase {
     public void fUnivExtractorWithDecorator() {
         TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        Converter<MyObject, Map<String, Object>> conv = Builders.Factory
+        Converter<MyObject, Map<String, Object>> conv = Simples.Builder
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getName())
                 .withWriterJF(writer)
                 .decorateJ(String::toUpperCase);
@@ -87,7 +91,7 @@ public class SimpleTests extends ConverterBase {
     public void fUnivExtractorWithTransformer() {
         TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        Converter<MyObject, Map<String, Object>> conv = Builders.Factory
+        Converter<MyObject, Map<String, Object>> conv = Simples.Builder
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getArray())
                 .decorateJ(String::toUpperCase)
                 .mapJ(s -> Arrays.asList(s.split(",")))
@@ -97,7 +101,7 @@ public class SimpleTests extends ConverterBase {
         assertNoConvertionOnNull(conv);
 
         // place of writer is unimportant
-        Converter<MyObject, Map<String, Object>> conv1 = Builders.Factory
+        Converter<MyObject, Map<String, Object>> conv1 = Simples.Builder
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getArray())
                 .withWriterJF(writer)
                 .decorateJ(String::toLowerCase)
@@ -111,7 +115,7 @@ public class SimpleTests extends ConverterBase {
     public void fUnivExtractorWithIgnoringErrors() {
         TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        Builders.UExtracting<MyObject, Map<String, Object>, ?> conv = Builders.Factory
+        Simples.UExtracting<MyObject, Map<String, Object>, ?> conv = Simples.Builder
                 .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getNumberLike())
                 .mapJ(s -> Integer.valueOf(s))
                 .withWriterJF(writer)

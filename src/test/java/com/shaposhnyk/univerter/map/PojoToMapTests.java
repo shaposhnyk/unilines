@@ -1,6 +1,10 @@
 package com.shaposhnyk.univerter.map;
 
-import com.shaposhnyk.univerter.*;
+import com.shaposhnyk.univerter.Converter;
+import com.shaposhnyk.univerter.Field;
+import com.shaposhnyk.univerter.TriConsumer;
+import com.shaposhnyk.univerter.builders.Objects;
+import com.shaposhnyk.univerter.builders.Simples;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.collection.IsCollectionWithSize;
 import org.junit.Assert;
@@ -14,7 +18,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 
 /**
- * Converting POJO class to a map example. This is also can be used to produce a JSON from a map
+ * Converting from POJO objects to a map example. This is also can be used to produce a JSON from a map
  */
 public class PojoToMapTests extends ConverterBase {
 
@@ -22,22 +26,22 @@ public class PojoToMapTests extends ConverterBase {
 
     @Test
     public void convertAsSingleObject() {
-        MySubObject subObject = null;
         MyObject input = new MyObject("Some", 42);
-        Map<String, Object> ctx = new ConcurrentHashMap<>();
+        Map<String, Object> ctx = new ConcurrentHashMap<>(); // to throw an exception on nulls
 
         Field root = Field.Factory.of("root");
-
-        Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
-                .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
-                .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
+        Converter<MyObject, Map<String, Object>> composer = Objects.Builder.ofField(root)
+                .ofSourceType(MyObject.class)
+                .ofContextType(ctx)
+                .field(of("name", MyObject::getName).decorate(String::toUpperCase))
+                .field(of("myList", MyObject::getArray).map((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
-                        .mapJ(Integer::valueOf)
+                        .map(Integer::valueOf)
                         .silenceExtractionErrors()
                 )
                 // here we suppose that calling myObject.getSubObject() is cheap
-                .field(of("subId", (MyObject o) -> o.getSubObejct().getValue()).mapJ((Integer i) -> i.toString()))
-                .field(of("subName", (MyObject o) -> o.getSubObejct().getName()).decorateJ(String::toLowerCase))
+                .field(of("subId", (MyObject o) -> o.getSubObject().getValue()).mapJ((Integer i) -> i.toString()))
+                .field(of("subName", (MyObject o) -> o.getSubObject().getName()).decorateJ(String::toLowerCase))
                 .build();
 
         composer.consume(input, ctx);
@@ -55,14 +59,16 @@ public class PojoToMapTests extends ConverterBase {
         Map<String, Object> ctx = new ConcurrentHashMap<>();
 
         Field fItems = Field.Factory.of("items");
-        Field object = Field.Factory.of("object(unused)");
+        Field fObject = Field.Factory.of("object(unused)");
 
-        Converter<String, Map<String, Object>> converter = ObjectBuilders.Factory.<String, Map<String, Object>>ofRoot(fItems)
-                .mapCF(PojoToMapTests::createListOfMaps)
-                .flatMapS(q -> findObjectByQuery(q))
+        Converter<String, Map<String, Object>> converter = Objects.Builder.ofField(fItems)
+                .ofSourceType(String.class)
+                .initialMapCF(PojoToMapTests::newListOfMaps)
+                .flatMapS(q -> findObjectsByQuery(q))
                 .pipeTo(
-                        ObjectBuilders.Factory.<MyObject, Collection<Map<String, Object>>>ofRoot(object)
-                                .mapC(PojoToMapTests::addSubMap)
+                        Objects.Builder.ofField(fObject)
+                                .ofSourceType(MyObject.class)
+                                .initialMapC(PojoToMapTests::addSubMap)
                                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
                                 .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
                                 .field(of("myInt", MyObject::getNumberLike)
@@ -70,8 +76,8 @@ public class PojoToMapTests extends ConverterBase {
                                         .silenceExtractionErrors()
                                 )
                                 // here we suppose that calling myObject.getSubObject() is cheap
-                                .field(of("subId", (MyObject o) -> o.getSubObejct().getValue()).mapJ((Integer i) -> i.toString()))
-                                .field(of("subName", (MyObject o) -> o.getSubObejct().getName()).decorateJ(String::toLowerCase))
+                                .field(of("subId", (MyObject o) -> o.getSubObject().getValue()).mapJ((Integer i) -> i.toString()))
+                                .field(of("subName", (MyObject o) -> o.getSubObject().getName()).decorateJ(String::toLowerCase))
                                 .build()
                 );
 
@@ -80,6 +86,7 @@ public class PojoToMapTests extends ConverterBase {
 
         List<Map<String, Object>> items = (List<Map<String, Object>>) ctx.get("items");
 
+        // first object produced by findObjectsByQuery
         Map<String, Object> ctx1 = items.get(0);
         Assert.assertThat(ctx1.get("name"), equalTo("SOME"));
         Assert.assertThat(ctx1.get("myList"), equalTo(Arrays.asList("Some1", "Some2")));
@@ -88,6 +95,7 @@ public class PojoToMapTests extends ConverterBase {
         Assert.assertThat(ctx1.get("subId"), equalTo("2"));
         Assert.assertThat(ctx1.get("subName"), equalTo("ssome"));
 
+        // second object produced by findObjectsByQuery
         Map<String, Object> ctx2 = items.get(1);
         Assert.assertThat(ctx2.get("name"), equalTo("SOMESOME"));
         Assert.assertThat(ctx2.get("myList"), equalTo(Arrays.asList("SomeSome1", "SomeSome2")));
@@ -95,11 +103,9 @@ public class PojoToMapTests extends ConverterBase {
 
         Assert.assertThat(ctx2.get("subId"), equalTo("4"));
         Assert.assertThat(ctx2.get("subName"), equalTo("ssomesome"));
-        Assert.assertThat(items, IsCollectionWithSize.hasSize(2));
-    }
 
-    private List<MyObject> findObjectByQuery(String q) {
-        return Arrays.asList(new MyObject(q, q.length()), new MyObject(q + q, 2 * q.length()));
+        // two objects at all
+        Assert.assertThat(items, IsCollectionWithSize.hasSize(2));
     }
 
     @Test
@@ -111,7 +117,9 @@ public class PojoToMapTests extends ConverterBase {
         Field root = Field.Factory.of("root");
         Field subObjF = Field.Factory.of("subObjF");
 
-        Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.<MyObject, Map<String, Object>>of(root)
+        Converter<MyObject, Map<String, Object>> composer = Objects.Builder.ofField(root)
+                .ofSourceType(MyObject.class)
+                .ofContextType(ctx)
                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
                 .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
@@ -119,12 +127,14 @@ public class PojoToMapTests extends ConverterBase {
                         .silenceExtractionErrors()
                 )
                 .field(
-                        // here we suppose that callingmyObject.getSubObject() is expensive
+                        // here we suppose that calling myObject.getSubObject() is expensive
                         // so it does make sense to call it once, using simple mapping hierarchical converter
-                        ObjectBuilders.Factory.of(subObjF, subObject, ctx)
+                        Objects.Builder.ofField(subObjF)
+                                .initialMapS(MyObject::getSubObject)
+                                .ofContextType(ctx)
                                 .field(of("subId", MySubObject::getValue).mapJ((Integer i) -> i.toString()))
                                 .field(of("subName", MySubObject::getName).decorateJ(String::toLowerCase))
-                                .mapJS(MyObject::getSubObejct)
+                                .build()
                 )
                 .build();
 
@@ -147,7 +157,9 @@ public class PojoToMapTests extends ConverterBase {
         Field root = Field.Factory.of("root");
         Field subObjF = Field.Factory.of("myObj");
 
-        Converter<MyObject, Map<String, Object>> composer = ObjectBuilders.Factory.of(root, input, ctx)
+        Converter<MyObject, Map<String, Object>> composer = Objects.Builder.ofField(root)
+                .ofSourceType(MyObject.class)
+                .ofContextType(ctx)
                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
                 .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
                 .field(of("myInt", MyObject::getNumberLike)
@@ -155,9 +167,9 @@ public class PojoToMapTests extends ConverterBase {
                         .silenceExtractionErrors()
                 )
                 .field(
-                        ObjectBuilders.Factory.ofRoot(subObjF, input, ctx)
-                                .mapS(MyObject::getSubObejct)
-                                .mapCF(PojoToMapTests::addSubMapField)
+                        Objects.Builder.ofField(subObjF)
+                                .initialMapS(MyObject::getSubObject)
+                                .initialMapCF(PojoToMapTests::addSubMapField)
                                 .field(of("subId", MySubObject::getValue).mapJ((Integer i) -> i.toString()))
                                 .field(of("subName", MySubObject::getName).decorateJ(String::toLowerCase))
                                 .build()
@@ -177,7 +189,11 @@ public class PojoToMapTests extends ConverterBase {
         Assert.assertThat(myObj.get("subName"), equalTo("ssome"));
     }
 
-    static Collection<Map<String, Object>> createListOfMaps(Field f, Map<String, Object> ctx) {
+    private List<MyObject> findObjectsByQuery(String q) {
+        return Arrays.asList(new MyObject(q, q.length()), new MyObject(q + q, 2 * q.length()));
+    }
+
+    static Collection<Map<String, Object>> newListOfMaps(Field f, Map<String, Object> ctx) {
         List<Map<String, Object>> list = new ArrayList<>();
         ctx.put(f.externalName(), list);
         return list;
@@ -196,8 +212,8 @@ public class PojoToMapTests extends ConverterBase {
         return map;
     }
 
-    <T, R> Builders.UExtracting<T, Map<String, Object>, R> of(String extName, Function<T, R> getter) {
+    <T, R> Simples.UExtracting<T, Map<String, Object>, R> of(String extName, Function<T, R> getter) {
         Field f = Field.Factory.of(extName);
-        return Builders.Factory.uniExtractingOf(f, getter).withWriterJF(UWRITER);
+        return Simples.Builder.uniExtractingOf(f, getter).withWriterJF(UWRITER);
     }
 }

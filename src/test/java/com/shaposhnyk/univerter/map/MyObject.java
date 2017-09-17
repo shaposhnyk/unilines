@@ -30,7 +30,7 @@ final class MyObject {
         return value;
     }
 
-    public MySubObject getSubObejct() {
+    public MySubObject getSubObject() {
         return subObject;
     }
 
