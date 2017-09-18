@@ -8,23 +8,6 @@ import com.shaposhnyk.univerter.Field
  */
 class Objects {
 
-    interface ComposingBuilder<TIN, CIN, TOUT, COUT> {
-        /**
-         * Adds a field to the builder
-         */
-        fun field(converter: Converter<TOUT, COUT>): ComposingBuilder<TIN, CIN, TOUT, COUT>
-
-        /**
-         * Adds fields to the builder
-         */
-        fun fields(converters: Collection<Converter<TOUT, COUT>>): ComposingBuilder<TIN, CIN, TOUT, COUT>
-
-        /**
-         * Terminal operation, constructing a converter from the builder
-         */
-        fun build(): Converter<TIN, CIN>
-    }
-
     companion object Builder {
         /**
          * @return hierarchical converter builder, which accepts sub-fields of type Converter<T,C>
@@ -39,12 +22,28 @@ class Objects {
      * while exposing it in fields()
      */
     data class ChainingConverter<T, C>(
+            val f: Field,
             val conv: Converter<T, C>
-    ) : Field by conv, Converter<T, C> {
+    ) : Field by f, Converter<T, C> {
         override fun fields(): List<Converter<*, *>> = listOf(conv)
 
         override fun consume(sourceObj: T?, workingCtx: C) {
             conv.consume(sourceObj, workingCtx)
+        }
+    }
+
+    data class FlatChainingConverter<TIN, CIN, TOUT, COUT>(
+            val f: Field,
+            val sFx: (TIN?) -> Iterable<TOUT>,
+            val ctxFx: (CIN) -> COUT,
+            val conv: Converter<TOUT, COUT>
+    ) : Field by f, Converter<TIN, CIN> {
+        override fun fields(): List<Converter<*, *>> = listOf(conv)
+
+        override fun consume(sourceObj: TIN?, workingCtx: CIN) {
+            val s1 = sFx(sourceObj)
+            val c1 = ctxFx(workingCtx)
+            s1.forEach { conv.consume(it, c1) }
         }
     }
 
@@ -177,13 +176,13 @@ class Objects {
          * Add a sub-converter field to this Builder composed of multiple fields
          * Output of transformation will be propagated to all fields
          */
-        override fun field(conv: Converter<T_OUT, C_OUT>): ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
-            fields.add(conv)
+        override fun field(converter: Converter<T_OUT, C_OUT>): ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
+            fields.add(converter)
             return this
         }
 
-        override fun fields(convs: Collection<Converter<T_OUT, C_OUT>>): ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
-            fields.addAll(convs)
+        override fun fields(converters: Collection<Converter<T_OUT, C_OUT>>): ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
+            fields.addAll(converters)
             return this
         }
 
@@ -194,8 +193,8 @@ class Objects {
             if (fields.size > 0) {
                 throw IllegalStateException("pipeTo is mutually exclusive with field()")
             }
-            return ChainingConverter(Simples.Simple(f, { t, c ->
-                val t1 = if (t != null) sFx(t) else null
+            return ChainingConverter(f, Simples.Simple(downstream, { t, c ->
+                val t1 = sFx(t)
                 val c1 = ctxFx(c)
                 downstream.consume(t1, c1)
             }))
@@ -211,18 +210,11 @@ class Objects {
 
     data class IHCBuilder<T_IN, C_IN, T_OUT, C_OUT>(
             val f: Field,
-            val sFx: (T_IN) -> Iterable<T_OUT>,
+            val sFx: (T_IN?) -> Iterable<T_OUT>,
             val ctxFx: (C_IN) -> C_OUT
     ) {
-        fun pipeTo(downstream: Converter<T_OUT, C_OUT>): Converter<T_IN, C_IN> {
-            val simpleConv = Simples.Simple<T_IN, C_IN>(f, { t, c ->
-                val t1 = if (t != null) sFx(t) else null
-                if (t1 != null) {
-                    val c1 = ctxFx(c)
-                    t1.forEach { downstream.consume(it, c1) }
-                }
-            })
-            return ChainingConverter(simpleConv)
+        fun pipeTo(dispatcher: Converter<T_OUT, C_OUT>): Converter<T_IN, C_IN> {
+            return FlatChainingConverter(f, sFx, ctxFx, dispatcher)
         }
     }
 }

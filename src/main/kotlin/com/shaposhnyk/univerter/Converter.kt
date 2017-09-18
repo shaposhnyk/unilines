@@ -3,7 +3,7 @@ package com.shaposhnyk.univerter
 /**
  * A field converter, which consumes a source object (T) and a working context (C)
  */
-interface Converter<in T, C> : Field {
+interface Converter<in T, in C> : Field {
     /**
      * @return an immutable list of sub-converters
      */

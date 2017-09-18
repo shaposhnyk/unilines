@@ -56,32 +56,9 @@ public class PojoToMapTests extends ConverterBase {
 
     @Test
     public void convertMultipleObjects() {
+        Converter<String, Map<String, Object>> converter = iteratingConverter();
+
         Map<String, Object> ctx = new ConcurrentHashMap<>();
-
-        Field fItems = Field.Factory.of("items");
-        Field fObject = Field.Factory.of("object(unused)");
-
-        Converter<String, Map<String, Object>> converter = Objects.Builder.ofField(fItems)
-                .ofSourceType(String.class)
-                .ofContextMapF(PojoToMapTests::newListOfMaps)
-                .iterateOn(q -> findObjectsByQuery(q))
-                .pipeTo(
-                        Objects.Builder.ofField(fObject)
-                                .ofSourceType(MyObject.class)
-                                .ofContextMap(PojoToMapTests::addSubMap)
-                                .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
-                                .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
-                                .field(of("myInt", MyObject::getNumberLike)
-                                        .mapJ(Integer::valueOf)
-                                        .silenceExtractionErrors()
-                                )
-                                // here we suppose that calling myObject.getSubObject() is cheap
-                                .field(of("subId", (MyObject o) -> o.getSubObject().getValue()).mapJ((Integer i) -> i.toString()))
-                                .field(of("subName", (MyObject o) -> o.getSubObject().getName()).decorateJ(String::toLowerCase))
-                                .build()
-                );
-
-
         converter.consume("Some", ctx);
 
         List<Map<String, Object>> items = (List<Map<String, Object>>) ctx.get("items");
@@ -106,6 +83,96 @@ public class PojoToMapTests extends ConverterBase {
 
         // two objects at all
         Assert.assertThat(items, IsCollectionWithSize.hasSize(2));
+    }
+
+    @Test
+    public void iterConverterStructureIsPreserved() {
+        Converter<String, Map<String, Object>> converter = iteratingConverter();
+
+        Assert.assertThat(converter.externalName(), equalTo("items"));
+
+        Converter<?, ?> objConv = converter.fields().get(0);
+        Assert.assertThat(objConv.externalName(), equalTo("object(docOnly)"));
+        Assert.assertThat(converter.fields(), IsCollectionWithSize.hasSize(1));
+
+        Assert.assertThat(objConv.fields(), IsCollectionWithSize.hasSize(5));
+
+        Assert.assertThat(objConv.fields().get(0).externalName(), equalTo("name"));
+        Assert.assertThat(objConv.fields().get(1).externalName(), equalTo("myList"));
+        Assert.assertThat(objConv.fields().get(3).externalName(), equalTo("subId"));
+    }
+
+    @Test
+    public void nestedObjectConverterStructureIsPreserved() {
+        Converter<MyObject, Map<String, Object>> objConv = nesteObjectConverter();
+
+        Assert.assertThat(objConv.externalName(), equalTo("root"));
+
+        List<Converter<?, ?>> fields = objConv.fields();
+        Assert.assertThat(fields.get(0).externalName(), equalTo("name"));
+        Assert.assertThat(fields.get(1).externalName(), equalTo("myList"));
+        Assert.assertThat(fields.get(3).externalName(), equalTo("myObj"));
+
+        Assert.assertThat(fields, IsCollectionWithSize.hasSize(4));
+
+        List<Converter<?, ?>> subFields = fields.get(3).fields();
+
+        Assert.assertThat(subFields.get(0).externalName(), equalTo("subId"));
+        Assert.assertThat(subFields.get(1).externalName(), equalTo("subName"));
+
+        Assert.assertThat(subFields, IsCollectionWithSize.hasSize(2));
+    }
+
+    @Test
+    public void objectPipeToIsSameAsBuild() {
+        Field root = Field.Factory.of("root");
+        Map<String, Object> ctx = new ConcurrentHashMap<>();
+
+        Converter<MyObject, Map<String, Object>> fieldsConv = Objects.Builder.ofField(root)
+                .ofSourceType(MyObject.class)
+                .ofContextType(ctx)
+                .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
+                .build();
+
+        Converter<MyObject, Map<String, Object>> pipeToConv = Objects.Builder.ofField(root)
+                .ofSourceType(MyObject.class)
+                .ofContextType(ctx)
+                .pipeTo(of("name", MyObject::getName).decorateJ(String::toUpperCase));
+
+        Assert.assertThat(fieldsConv.externalName(), equalTo("root"));
+        Assert.assertThat(pipeToConv.externalName(), equalTo("root"));
+
+        Assert.assertThat(fieldsConv.fields().get(0).externalName(), equalTo("name"));
+        Assert.assertThat(pipeToConv.fields().get(0).externalName(), equalTo("name"));
+
+
+        Assert.assertThat(fieldsConv.fields(), IsCollectionWithSize.hasSize(1));
+        Assert.assertThat(pipeToConv.fields(), IsCollectionWithSize.hasSize(1));
+    }
+
+    private Converter<String, Map<String, Object>> iteratingConverter() {
+        Field fItems = Field.Factory.of("items");
+        Field fObject = Field.Factory.of("object(docOnly)");
+
+        return Objects.Builder.ofField(fItems)
+                .ofSourceType(String.class)
+                .ofContextMapF(PojoToMapTests::newListOfMaps)
+                .iterateOn(q -> findObjectsByQuery(q))
+                .pipeTo(
+                        Objects.Builder.ofField(fObject)
+                                .ofSourceType(MyObject.class)
+                                .ofContextMap(PojoToMapTests::addSubMap)
+                                .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
+                                .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
+                                .field(of("myInt", MyObject::getNumberLike)
+                                        .mapJ(Integer::valueOf)
+                                        .silenceExtractionErrors()
+                                )
+                                // here we suppose that calling myObject.getSubObject() is cheap
+                                .field(of("subId", (MyObject o) -> o.getSubObject().getValue()).mapJ((Integer i) -> i.toString()))
+                                .field(of("subName", (MyObject o) -> o.getSubObject().getName()).decorateJ(String::toLowerCase))
+                                .build()
+                );
     }
 
     @Test
@@ -151,14 +218,30 @@ public class PojoToMapTests extends ConverterBase {
 
     @Test
     public void convertOnSubObject() {
-        MySubObject subObject = null;
         MyObject input = new MyObject("Some", 42);
         Map<String, Object> ctx = new ConcurrentHashMap<>();
 
+        Converter<MyObject, Map<String, Object>> composer = nesteObjectConverter();
+
+        composer.consume(input, ctx);
+
+        Assert.assertThat(ctx.get("name"), equalTo("SOME"));
+        Assert.assertThat(ctx.get("myList"), equalTo(Arrays.asList("Some1", "Some2")));
+        Assert.assertThat(ctx.get("myInt"), equalTo(3));
+
+        Map<String, Object> myObj = (Map<String, Object>) ctx.get("myObj");
+        Assert.assertThat(myObj, not(equalTo(Collections.emptyMap())));
+        Assert.assertThat(myObj.keySet(), CoreMatchers.hasItems("subId", "subName"));
+        Assert.assertThat(myObj.get("subId"), equalTo("21"));
+        Assert.assertThat(myObj.get("subName"), equalTo("ssome"));
+    }
+
+    private Converter<MyObject, Map<String, Object>> nesteObjectConverter() {
         Field root = Field.Factory.of("root");
         Field subObjF = Field.Factory.of("myObj");
+        Map<String, Object> ctx = new ConcurrentHashMap<>();
 
-        Converter<MyObject, Map<String, Object>> composer = Objects.Builder.ofField(root)
+        return Objects.Builder.ofField(root)
                 .ofSourceType(MyObject.class)
                 .ofContextType(ctx)
                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
@@ -176,18 +259,6 @@ public class PojoToMapTests extends ConverterBase {
                                 .build()
                 )
                 .build();
-
-        composer.consume(input, ctx);
-
-        Assert.assertThat(ctx.get("name"), equalTo("SOME"));
-        Assert.assertThat(ctx.get("myList"), equalTo(Arrays.asList("Some1", "Some2")));
-        Assert.assertThat(ctx.get("myInt"), equalTo(3));
-
-        Map<String, Object> myObj = (Map<String, Object>) ctx.get("myObj");
-        Assert.assertThat(myObj, not(equalTo(Collections.emptyMap())));
-        Assert.assertThat(myObj.keySet(), CoreMatchers.hasItems("subId", "subName"));
-        Assert.assertThat(myObj.get("subId"), equalTo("21"));
-        Assert.assertThat(myObj.get("subName"), equalTo("ssome"));
     }
 
     private List<MyObject> findObjectsByQuery(String q) {

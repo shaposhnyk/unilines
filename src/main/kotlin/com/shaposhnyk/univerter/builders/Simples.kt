@@ -114,9 +114,8 @@ class Simples {
         }
     }
 
-
     /**
-     * Converter, which extracts value from source object, then writes it with a dedicated writer
+     * Converter, which extracts value from source object, then writes it with a generic writer
      */
     data class UExtracting<T, C, R>(val f: Field,
                                     val extractor: (T?) -> R?,
@@ -195,12 +194,12 @@ class Simples {
         /**
          * @return most generic convertor which is a function of source object (T) and working context (U)
          */
-        fun <T, U> of(f: Field): Simple<Any, Any> {
+        fun of(f: Field): Simple<Any, Any> {
             return Simple(f)
         }
 
         /*
-         * Convertors with value extractor and associated writer.
+         * Converters with value extractor and associated writer.
          * Type of value returned by extractor should match to the type of the writer
          */
         fun <T, C, R> extractingOf(f: Field, fx: Function<T, R?>): Extracting<T, C, R> {
@@ -208,10 +207,9 @@ class Simples {
         }
 
         /*
-         * Convertors with value extractor and associated generic writer.
+         * Converters with value extractor and associated generic writer.
          * Writer accepts Object, it is up to writer to handle all possible input types
          */
-
         fun <T, C, R> uniExtractingOf(f: Field, fx: Function<T, R?>): UExtracting<T, C, R> {
             return UExtracting(f, { t -> if (t != null) fx.apply(t) else null })
         }
