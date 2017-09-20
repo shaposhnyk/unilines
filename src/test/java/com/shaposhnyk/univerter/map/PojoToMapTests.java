@@ -1,10 +1,12 @@
 package com.shaposhnyk.univerter.map;
 
-import com.shaposhnyk.univerter.Converter;
-import com.shaposhnyk.univerter.Field;
-import com.shaposhnyk.univerter.TriConsumer;
-import com.shaposhnyk.univerter.builders.Objects;
-import com.shaposhnyk.univerter.builders.Simples;
+import com.shaposhnyk.univerter.UBiPipeline;
+import com.shaposhnyk.univerter.UField;
+import com.shaposhnyk.univerter.UTriConsumer;
+import com.shaposhnyk.univerter.builders.UCField;
+import com.shaposhnyk.univerter.builders.UCObjects;
+import com.shaposhnyk.univerter.map.helpers.MyObject;
+import com.shaposhnyk.univerter.map.helpers.MySubObject;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.collection.IsCollectionWithSize;
 import org.junit.Assert;
@@ -22,15 +24,15 @@ import static org.hamcrest.CoreMatchers.not;
  */
 public class PojoToMapTests extends ConverterBase {
 
-    private static final TriConsumer<Field, Object, Map<String, Object>> UWRITER = (f, s, ctx) -> ctx.put(f.externalName(), s);
+    private static final UTriConsumer<UField, Object, Map<String, Object>> UWRITER = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
     @Test
     public void convertAsSingleObject() {
         MyObject input = new MyObject("Some", 42);
         Map<String, Object> ctx = new ConcurrentHashMap<>(); // to throw an exception on nulls
 
-        Field root = Field.Factory.of("root");
-        Converter<MyObject, Map<String, Object>> composer = Objects.Builder.ofField(root)
+        UField root = UField.Factory.of("root");
+        UBiPipeline<MyObject, Map<String, Object>> composer = UCObjects.Builder.of(root)
                 .ofSourceType(MyObject.class)
                 .ofContextType(ctx)
                 .field(of("name", MyObject::getName).decorate(String::toUpperCase))
@@ -56,7 +58,7 @@ public class PojoToMapTests extends ConverterBase {
 
     @Test
     public void convertMultipleObjects() {
-        Converter<String, Map<String, Object>> converter = iteratingConverter();
+        UBiPipeline<String, Map<String, Object>> converter = iteratingConverter();
 
         Map<String, Object> ctx = new ConcurrentHashMap<>();
         converter.consume("Some", ctx);
@@ -87,11 +89,11 @@ public class PojoToMapTests extends ConverterBase {
 
     @Test
     public void iterConverterStructureIsPreserved() {
-        Converter<String, Map<String, Object>> converter = iteratingConverter();
+        UBiPipeline<String, Map<String, Object>> converter = iteratingConverter();
 
         Assert.assertThat(converter.externalName(), equalTo("items"));
 
-        Converter<?, ?> objConv = converter.fields().get(0);
+        UBiPipeline<?, ?> objConv = converter.fields().get(0);
         Assert.assertThat(objConv.externalName(), equalTo("object(docOnly)"));
         Assert.assertThat(converter.fields(), IsCollectionWithSize.hasSize(1));
 
@@ -104,18 +106,18 @@ public class PojoToMapTests extends ConverterBase {
 
     @Test
     public void nestedObjectConverterStructureIsPreserved() {
-        Converter<MyObject, Map<String, Object>> objConv = nesteObjectConverter();
+        UBiPipeline<MyObject, Map<String, Object>> objConv = nesteObjectConverter();
 
         Assert.assertThat(objConv.externalName(), equalTo("root"));
 
-        List<Converter<?, ?>> fields = objConv.fields();
+        List<UBiPipeline<?, ?>> fields = objConv.fields();
         Assert.assertThat(fields.get(0).externalName(), equalTo("name"));
         Assert.assertThat(fields.get(1).externalName(), equalTo("myList"));
         Assert.assertThat(fields.get(3).externalName(), equalTo("myObj"));
 
         Assert.assertThat(fields, IsCollectionWithSize.hasSize(4));
 
-        List<Converter<?, ?>> subFields = fields.get(3).fields();
+        List<UBiPipeline<?, ?>> subFields = fields.get(3).fields();
 
         Assert.assertThat(subFields.get(0).externalName(), equalTo("subId"));
         Assert.assertThat(subFields.get(1).externalName(), equalTo("subName"));
@@ -125,16 +127,16 @@ public class PojoToMapTests extends ConverterBase {
 
     @Test
     public void objectPipeToIsSameAsBuild() {
-        Field root = Field.Factory.of("root");
+        UField root = UField.Factory.of("root");
         Map<String, Object> ctx = new ConcurrentHashMap<>();
 
-        Converter<MyObject, Map<String, Object>> fieldsConv = Objects.Builder.ofField(root)
+        UBiPipeline<MyObject, Map<String, Object>> fieldsConv = UCObjects.Builder.of(root)
                 .ofSourceType(MyObject.class)
                 .ofContextType(ctx)
                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
                 .build();
 
-        Converter<MyObject, Map<String, Object>> pipeToConv = Objects.Builder.ofField(root)
+        UBiPipeline<MyObject, Map<String, Object>> pipeToConv = UCObjects.Builder.of(root)
                 .ofSourceType(MyObject.class)
                 .ofContextType(ctx)
                 .pipeTo(of("name", MyObject::getName).decorateJ(String::toUpperCase));
@@ -150,16 +152,16 @@ public class PojoToMapTests extends ConverterBase {
         Assert.assertThat(pipeToConv.fields(), IsCollectionWithSize.hasSize(1));
     }
 
-    private Converter<String, Map<String, Object>> iteratingConverter() {
-        Field fItems = Field.Factory.of("items");
-        Field fObject = Field.Factory.of("object(docOnly)");
+    private UBiPipeline<String, Map<String, Object>> iteratingConverter() {
+        UField fItems = UField.Factory.of("items");
+        UField fObject = UField.Factory.of("object(docOnly)");
 
-        return Objects.Builder.ofField(fItems)
+        return UCObjects.Builder.of(fItems)
                 .ofSourceType(String.class)
                 .ofContextMapF(PojoToMapTests::newListOfMaps)
                 .iterateOn(q -> findObjectsByQuery(q))
                 .pipeTo(
-                        Objects.Builder.ofField(fObject)
+                        UCObjects.Builder.of(fObject)
                                 .ofSourceType(MyObject.class)
                                 .ofContextMap(PojoToMapTests::addSubMap)
                                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
@@ -181,10 +183,10 @@ public class PojoToMapTests extends ConverterBase {
         MyObject input = new MyObject("Some", 42);
         Map<String, Object> ctx = new ConcurrentHashMap<>();
 
-        Field root = Field.Factory.of("root");
-        Field subObjF = Field.Factory.of("subObjF");
+        UField root = UField.Factory.of("root");
+        UField subObjF = UField.Factory.of("subObjF");
 
-        Converter<MyObject, Map<String, Object>> composer = Objects.Builder.ofField(root)
+        UBiPipeline<MyObject, Map<String, Object>> composer = UCObjects.Builder.of(root)
                 .ofSourceType(MyObject.class)
                 .ofContextType(ctx)
                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
@@ -197,7 +199,7 @@ public class PojoToMapTests extends ConverterBase {
                         // here we suppose that calling myObject.getSubObject() is expensive
                         // so it does make sense to call it once, using simple mapping hierarchical converter
                         // however, note, that we are still writing the output to the same map
-                        Objects.Builder.ofField(subObjF)
+                        UCObjects.Builder.of(subObjF)
                                 .ofSourceMap(MyObject::getSubObject)
                                 .ofContextType(ctx)
                                 .field(of("subId", MySubObject::getValue).mapJ((Integer i) -> i.toString()))
@@ -221,7 +223,7 @@ public class PojoToMapTests extends ConverterBase {
         MyObject input = new MyObject("Some", 42);
         Map<String, Object> ctx = new ConcurrentHashMap<>();
 
-        Converter<MyObject, Map<String, Object>> composer = nesteObjectConverter();
+        UBiPipeline<MyObject, Map<String, Object>> composer = nesteObjectConverter();
 
         composer.consume(input, ctx);
 
@@ -236,12 +238,12 @@ public class PojoToMapTests extends ConverterBase {
         Assert.assertThat(myObj.get("subName"), equalTo("ssome"));
     }
 
-    private Converter<MyObject, Map<String, Object>> nesteObjectConverter() {
-        Field root = Field.Factory.of("root");
-        Field subObjF = Field.Factory.of("myObj");
+    private UBiPipeline<MyObject, Map<String, Object>> nesteObjectConverter() {
+        UField root = UField.Factory.of("root");
+        UField subObjF = UField.Factory.of("myObj");
         Map<String, Object> ctx = new ConcurrentHashMap<>();
 
-        return Objects.Builder.ofField(root)
+        return UCObjects.Builder.of(root)
                 .ofSourceType(MyObject.class)
                 .ofContextType(ctx)
                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
@@ -251,7 +253,7 @@ public class PojoToMapTests extends ConverterBase {
                         .silenceExtractionErrors()
                 )
                 .field(
-                        Objects.Builder.ofField(subObjF)
+                        UCObjects.Builder.of(subObjF)
                                 .ofSourceMap(MyObject::getSubObject)
                                 .ofContextMapF(PojoToMapTests::addSubMapField)
                                 .field(of("subId", MySubObject::getValue).mapJ((Integer i) -> i.toString()))
@@ -265,7 +267,7 @@ public class PojoToMapTests extends ConverterBase {
         return Arrays.asList(new MyObject(q, q.length()), new MyObject(q + q, 2 * q.length()));
     }
 
-    static Collection<Map<String, Object>> newListOfMaps(Field f, Map<String, Object> ctx) {
+    static Collection<Map<String, Object>> newListOfMaps(UField f, Map<String, Object> ctx) {
         List<Map<String, Object>> list = new ArrayList<>();
         ctx.put(f.externalName(), list);
         return list;
@@ -278,14 +280,14 @@ public class PojoToMapTests extends ConverterBase {
         return map;
     }
 
-    static Map<String, Object> addSubMapField(Field f, Map<String, Object> ctxMap) {
+    static Map<String, Object> addSubMapField(UField f, Map<String, Object> ctxMap) {
         Map<String, Object> map = new HashMap<>();
         ctxMap.put(f.externalName(), map);
         return map;
     }
 
-    <T, R> Simples.UExtracting<T, Map<String, Object>, R> of(String extName, Function<T, R> getter) {
-        Field f = Field.Factory.of(extName);
-        return Simples.Builder.uniExtractingOf(f, getter).withWriterJF(UWRITER);
+    <T, R> UCField.UExtracting<T, Map<String, Object>, R> of(String extName, Function<T, R> getter) {
+        UField f = UField.Factory.of(extName);
+        return UCField.Builder.uniExtractingOf(f, getter).withWriterJF(UWRITER);
     }
 }

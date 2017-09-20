@@ -1,13 +1,13 @@
 package com.shaposhnyk.univerter.builders
 
-import com.shaposhnyk.univerter.Converter
+import com.shaposhnyk.univerter.UBiPipeline
 import java.util.function.Function
 import java.util.function.Predicate
 
 /**
  * Filter builder methods for a ConverterBuilder with a dedicated extractor
  */
-interface ExtractingBuilder<T, C, R> : Converter<T, C> {
+interface ExtractingBuilder<T, C, R> : UBiPipeline<T, C> {
 
     /**
      * Creates a new ConverterBuilder, which will process only if extracted value matches the predicate

@@ -1,9 +1,9 @@
-package com.shaposhnyk.univerter.map;
+package com.shaposhnyk.univerter.map.helpers;
 
 /**
  * Test sub-object
  */
-final class MySubObject {
+public final class MySubObject {
     private final String name;
     private final int value;
 

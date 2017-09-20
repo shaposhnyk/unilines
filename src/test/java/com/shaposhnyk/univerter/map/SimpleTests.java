@@ -1,10 +1,11 @@
 package com.shaposhnyk.univerter.map;
 
-import com.shaposhnyk.univerter.Converter;
-import com.shaposhnyk.univerter.Field;
-import com.shaposhnyk.univerter.TriConsumer;
+import com.shaposhnyk.univerter.UBiPipeline;
+import com.shaposhnyk.univerter.UField;
+import com.shaposhnyk.univerter.UTriConsumer;
 import com.shaposhnyk.univerter.builders.ExtractingBuilder;
-import com.shaposhnyk.univerter.builders.Simples;
+import com.shaposhnyk.univerter.builders.UCField;
+import com.shaposhnyk.univerter.map.helpers.MyObject;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -15,20 +16,20 @@ import java.util.function.BiConsumer;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 /**
- * Field convertion tests
+ * UField convertion tests
  */
 public class SimpleTests extends ConverterBase {
 
     @Test
     public void simpleConverter() {
-        Converter<MyObject, Map<String, Object>> conv = simpleInt();
+        UBiPipeline<MyObject, Map<String, Object>> conv = simpleInt();
         assertConvertionOnSome(conv, equalTo("Some"));
     }
 
     @Test
     public void simpleConverterWithCondition() {
-        Simples.Simple<MyObject, Map<String, Object>> sconv = simpleInt();
-        Converter<MyObject, Map<String, Object>> conv = sconv.filterJS(s -> s.getName() != null);
+        UCField.Simple<MyObject, Map<String, Object>> sconv = simpleInt();
+        UBiPipeline<MyObject, Map<String, Object>> conv = sconv.filterJS(s -> s.getName() != null);
 
         assertConvertionOnSome(conv, equalTo("Some"));
         assertNoConvertionOnNull(conv);
@@ -38,7 +39,7 @@ public class SimpleTests extends ConverterBase {
     public void extractingWithDecorator() {
         BiConsumer<String, Map<String, Object>> writer = (s, ctx) -> ctx.put(fInt().externalName(), s);
 
-        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Simples.Builder
+        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = UCField.Builder
                 .extractingOf(fInt(), MyObject::getName)
                 .withWriterJ(writer)
                 .decorateJ(String::toUpperCase);
@@ -49,9 +50,9 @@ public class SimpleTests extends ConverterBase {
 
     @Test
     public void univExtractorWithDecorator() {
-        TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
+        UTriConsumer<UField, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Simples.Builder
+        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = UCField.Builder
                 .uniExtractingOf(fInt(), MyObject::getName)
                 .withWriterJF(writer)
                 .decorateJ(String::toUpperCase);
@@ -62,10 +63,10 @@ public class SimpleTests extends ConverterBase {
 
     @Test
     public void univExtractorWithWriter() {
-        TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
+        UTriConsumer<UField, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
 
-        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = Simples.Builder
+        ExtractingBuilder<MyObject, Map<String, Object>, String> conv = UCField.Builder
                 .uniExtractingOf(fInt(), MyObject::getName)
                 .withWriterJF(writer)
                 .decorateJ(String::toUpperCase);
@@ -76,10 +77,10 @@ public class SimpleTests extends ConverterBase {
 
     @Test
     public void fUnivExtractorWithDecorator() {
-        TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
+        UTriConsumer<UField, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        Converter<MyObject, Map<String, Object>> conv = Simples.Builder
-                .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getName())
+        UBiPipeline<MyObject, Map<String, Object>> conv = UCField.Builder
+                .fUniExtractingOf(fInt(), (UField f, MyObject o) -> o.getName())
                 .withWriterJF(writer)
                 .decorateJ(String::toUpperCase);
 
@@ -89,10 +90,10 @@ public class SimpleTests extends ConverterBase {
 
     @Test
     public void fUnivExtractorWithTransformer() {
-        TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
+        UTriConsumer<UField, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        Converter<MyObject, Map<String, Object>> conv = Simples.Builder
-                .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getArray())
+        UBiPipeline<MyObject, Map<String, Object>> conv = UCField.Builder
+                .fUniExtractingOf(fInt(), (UField f, MyObject o) -> o.getArray())
                 .decorateJ(String::toUpperCase)
                 .mapJ(s -> Arrays.asList(s.split(",")))
                 .withWriterJF(writer);
@@ -101,8 +102,8 @@ public class SimpleTests extends ConverterBase {
         assertNoConvertionOnNull(conv);
 
         // place of writer is unimportant
-        Converter<MyObject, Map<String, Object>> conv1 = Simples.Builder
-                .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getArray())
+        UBiPipeline<MyObject, Map<String, Object>> conv1 = UCField.Builder
+                .fUniExtractingOf(fInt(), (UField f, MyObject o) -> o.getArray())
                 .withWriterJF(writer)
                 .decorateJ(String::toLowerCase)
                 .mapJ(s -> Arrays.asList(s.split(",")));
@@ -113,10 +114,10 @@ public class SimpleTests extends ConverterBase {
 
     @Test
     public void fUnivExtractorWithIgnoringErrors() {
-        TriConsumer<Field, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
+        UTriConsumer<UField, Object, Map<String, Object>> writer = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
-        Simples.UExtracting<MyObject, Map<String, Object>, ?> conv = Simples.Builder
-                .fUniExtractingOf(fInt(), (Field f, MyObject o) -> o.getNumberLike())
+        UCField.UExtracting<MyObject, Map<String, Object>, ?> conv = UCField.Builder
+                .fUniExtractingOf(fInt(), (UField f, MyObject o) -> o.getNumberLike())
                 .mapJ(s -> Integer.valueOf(s))
                 .withWriterJF(writer)
                 .decorateJ(i -> i * 2);

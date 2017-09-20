@@ -1,12 +1,12 @@
 package com.shaposhnyk.univerter.builders
 
-import com.shaposhnyk.univerter.Converter
+import com.shaposhnyk.univerter.UBiPipeline
 import java.util.function.Predicate
 
 /**
  * A field converter, which consumes a source object (T) and a working context (C)
  */
-interface FilteringBuilder<T, C> : Converter<T, C> {
+interface FilteringBuilder<T, C> : UBiPipeline<T, C> {
 
     /**
      * @return new ConverterBuilder which processes only input & context matching the predicate

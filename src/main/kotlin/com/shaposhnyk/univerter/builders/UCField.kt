@@ -1,25 +1,25 @@
 package com.shaposhnyk.univerter.builders
 
-import com.shaposhnyk.univerter.Converter
-import com.shaposhnyk.univerter.Field
-import com.shaposhnyk.univerter.TriConsumer
+import com.shaposhnyk.univerter.UBiPipeline
+import com.shaposhnyk.univerter.UField
+import com.shaposhnyk.univerter.UTriConsumer
 import java.util.function.BiConsumer
 import java.util.function.BiFunction
+import java.util.function.Consumer
 import java.util.function.Function
 
 /**
- * Builder for final field converting consumers
- * Created by vlad on 25.08.17.
+ * Final field based converters
  */
-class Simples {
+class UCField {
 
     /**
      * Generic converter, which wraps field and a BiConsumer
      */
-    data class Simple<T, C>(val f: Field,
+    data class Simple<T, C>(val f: UField,
                             val consumer: (T?, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Converter<T, C>, FilteringBuilder<T, C> {
-        override fun fields(): List<Converter<*, *>> = listOf()
+        : UField by f, UBiPipeline<T, C>, FilteringBuilder<T, C> {
+        override fun fields(): List<UBiPipeline<*, *>> = listOf()
 
         override fun consume(sourceObj: T?, workingCtx: C) {
             consumer(sourceObj, workingCtx)
@@ -33,7 +33,7 @@ class Simples {
             return withConsumer { t, c -> if (t != null) newConsumer.accept(t, c) }
         }
 
-        fun <U, Z> withConsumerJF(newConsumer: TriConsumer<Field, U, Z>): Simple<U, Z> {
+        fun <U, Z> withConsumerJF(newConsumer: UTriConsumer<UField, U, Z>): Simple<U, Z> {
             return withConsumer { t, c -> if (t != null) newConsumer.accept(f, t, c) }
         }
 
@@ -53,14 +53,14 @@ class Simples {
     }
 
     /**
-     * Converter, which extracts value from source object, then writes it with a dedicated writer
+     * UBiPipeline, which extracts value from source object, then writes it with a dedicated writer
      */
-    data class Extracting<T, C, R>(val f: Field,
+    data class Extracting<T, C, R>(val f: UField,
                                    val extractor: (T?) -> R?,
                                    val writer: (R?, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Converter<T, C>,
+        : UField by f, UBiPipeline<T, C>,
             FilteringBuilder<T, C>, ExtractingBuilder<T, C, R> {
-        override fun fields(): List<Converter<*, *>> = listOf()
+        override fun fields(): List<UBiPipeline<*, *>> = listOf()
 
         override fun consume(sourceObj: T?, workingCtx: C) {
             val v1 = extractor(sourceObj)
@@ -79,7 +79,7 @@ class Simples {
             return withWriter { r, c -> if (r != null) newWriter.accept(r, c) }
         }
 
-        fun <Z> withWriterJF(newWriter: TriConsumer<Field, R, Z>): Extracting<T, Z, R> {
+        fun <Z> withWriterJF(newWriter: UTriConsumer<UField, R, Z>): Extracting<T, Z, R> {
             return withWriter { r, c -> if (r != null) newWriter.accept(f, r, c) }
         }
 
@@ -115,18 +115,24 @@ class Simples {
     }
 
     /**
-     * Converter, which extracts value from source object, then writes it with a generic writer
+     * UBiPipeline, which extracts value from source object, then writes it with a generic writer
      */
-    data class UExtracting<T, C, R>(val f: Field,
+    data class UExtracting<T, C, R>(val f: UField,
                                     val extractor: (T?) -> R?,
                                     val writer: (Any?, C) -> Unit = { _, _ -> Unit })
-        : Field by f, Converter<T, C>,
+        : UField by f, UBiPipeline<T, C>,
             FilteringBuilder<T, C>, ExtractingBuilder<T, C, R> {
-        override fun fields(): List<Converter<*, *>> = listOf()
+        override fun fields(): List<UBiPipeline<*, *>> = listOf()
 
         override fun consume(sourceObj: T?, workingCtx: C) {
-            val v1 = extractor(sourceObj)
-            writer(v1, workingCtx)
+            try {
+                val v1 = extractor(sourceObj)
+                writer(v1, workingCtx)
+            } catch (e: RuntimeException) {
+                val trace = StackTraceElement("com.shaposhnyk.univerter", "generated", f.toString(), 1)
+                e.stackTrace = arrayOf(trace).plus(e.stackTrace)
+                throw e
+            }
         }
 
         /*
@@ -136,11 +142,15 @@ class Simples {
             return UExtracting(f, extractor, newWriter)
         }
 
+        fun <Z> withWriterF(newWriter: UTriConsumer<UField, Any?, Z>): UExtracting<T, Z, R> {
+            return UExtracting(f, extractor, { r, c -> newWriter.accept(f, r, c) })
+        }
+
         fun <Z> withWriterJ(newWriter: BiConsumer<Any, Z>): UExtracting<T, Z, R> {
             return withWriter { r, c -> if (r != null) newWriter.accept(r, c) }
         }
 
-        fun <Z> withWriterJF(newWriter: TriConsumer<Field, Any, Z>): UExtracting<T, Z, R> {
+        fun <Z> withWriterJF(newWriter: UTriConsumer<UField, Any, Z>): UExtracting<T, Z, R> {
             return withWriter { r, c -> if (r != null) newWriter.accept(f, r, c) }
         }
 
@@ -194,7 +204,7 @@ class Simples {
         /**
          * @return most generic convertor which is a function of source object (T) and working context (U)
          */
-        fun of(f: Field): Simple<Any, Any> {
+        fun of(f: UField): Simple<Any, Any> {
             return Simple(f)
         }
 
@@ -202,7 +212,7 @@ class Simples {
          * Converters with value extractor and associated writer.
          * Type of value returned by extractor should match to the type of the writer
          */
-        fun <T, C, R> extractingOf(f: Field, fx: Function<T, R?>): Extracting<T, C, R> {
+        fun <T, C, R> extractingOf(f: UField, fx: Function<T, R?>): Extracting<T, C, R> {
             return Extracting(f, { t -> if (t != null) fx.apply(t) else null })
         }
 
@@ -210,12 +220,16 @@ class Simples {
          * Converters with value extractor and associated generic writer.
          * Writer accepts Object, it is up to writer to handle all possible input types
          */
-        fun <T, C, R> uniExtractingOf(f: Field, fx: Function<T, R?>): UExtracting<T, C, R> {
+        fun <T, C, R> uniExtractingOf(f: UField, fx: Function<T, R?>): UExtracting<T, C, R> {
             return UExtracting(f, { t -> if (t != null) fx.apply(t) else null })
         }
 
-        fun <T, C, R> fUniExtractingOf(f: Field, fx: BiFunction<Field, T, R?>): UExtracting<T, C, R> {
+        fun <T, C, R> fUniExtractingOf(f: UField, fx: BiFunction<UField, T, R?>): UExtracting<T, C, R> {
             return UExtracting(f, { t -> if (t != null) fx.apply(f, t) else null })
+        }
+
+        fun <T, C> contextMapperOf(f: UField, ctxFx: Consumer<C>): Simple<T, C> {
+            return Simple(f, { _, c -> ctxFx.accept(c) })
         }
     }
 }

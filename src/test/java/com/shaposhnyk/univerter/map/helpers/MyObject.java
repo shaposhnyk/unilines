@@ -1,14 +1,14 @@
-package com.shaposhnyk.univerter.map;
+package com.shaposhnyk.univerter.map.helpers;
 
 /**
  * Test object
  */
-final class MyObject {
+public final class MyObject {
     private final String name;
     private final int value;
     private final MySubObject subObject;
 
-    MyObject(String name, int value) {
+    public MyObject(String name, int value) {
         this.name = name;
         this.value = value;
         this.subObject = new MySubObject("s" + name, value / 2);

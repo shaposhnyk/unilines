@@ -1,8 +1,9 @@
 package com.shaposhnyk.univerter.map;
 
-import com.shaposhnyk.univerter.Converter;
-import com.shaposhnyk.univerter.Field;
-import com.shaposhnyk.univerter.builders.Simples;
+import com.shaposhnyk.univerter.UBiPipeline;
+import com.shaposhnyk.univerter.UField;
+import com.shaposhnyk.univerter.builders.UCField;
+import com.shaposhnyk.univerter.map.helpers.MyObject;
 import org.hamcrest.Matcher;
 
 import java.util.Collections;
@@ -18,20 +19,20 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 public class ConverterBase {
 
-    public Field fInt() {
-        return Field.Factory.of("int", "ext");
+    public UField fInt() {
+        return UField.Factory.of("int", "ext");
     }
 
-    public Field fName() {
-        return Field.Factory.of("name", "displayName");
+    public UField fName() {
+        return UField.Factory.of("name", "displayName");
     }
 
-    public Simples.Simple<MyObject, Map<String, Object>> simpleInt() {
-        final Field f = fInt();
-        return Simples.Builder.of(f).withConsumerJ((s, c) -> c.put(f.externalName(), s.getName()));
+    public UCField.Simple<MyObject, Map<String, Object>> simpleInt() {
+        final UField f = fInt();
+        return UCField.Builder.of(f).withConsumerJ((s, c) -> c.put(f.externalName(), s.getName()));
     }
 
-    public Map<String, Object> assertConvertionOnSome(Converter<MyObject, Map<String, Object>> conv, Matcher<Object> valueMatcher) {
+    public Map<String, Object> assertConvertionOnSome(UBiPipeline<MyObject, Map<String, Object>> conv, Matcher<Object> valueMatcher) {
         MyObject source1 = new MyObject("Some", 42);
         Map<String, Object> work = new ConcurrentHashMap<>(); // disallow nulls
         conv.consume(source1, work);
@@ -41,7 +42,7 @@ public class ConverterBase {
         return work;
     }
 
-    public Map<String, Object> assertNoConvertionOnNull(Converter<MyObject, Map<String, Object>> conv) {
+    public Map<String, Object> assertNoConvertionOnNull(UBiPipeline<MyObject, Map<String, Object>> conv) {
         MyObject source1 = new MyObject(null, 42);
         Map<String, Object> work = new ConcurrentHashMap<>(); // disallow nulls
         conv.consume(source1, work);
