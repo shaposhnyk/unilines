@@ -5,15 +5,30 @@ package com.shaposhnyk.univerter
  */
 interface UField {
 
+    /**
+     * @return non-null name of the field in the current system
+     */
     fun internalName(): String
 
+    /**
+     * @return non-null name of the field in an external system
+     */
     fun externalName(): String
 
+    /**
+     * @return true if field is public
+     */
     fun isPublic(): Boolean
 
+    /**
+     * @return true if field is used as filter
+     */
     fun hasFilter(): Boolean
 
-    fun description(): String
+    /**
+     * @return non-null description of a field mapping
+     */
+    fun description(): String = ""
 
     /**
      * Factory companion object
@@ -22,7 +37,7 @@ interface UField {
         /**
          * Simplest mapping field (isPublic, non-filter, w/o description)
          */
-        data class SimpleField(
+        data class SimpleImmutableField(
                 private val internal: String,
                 private val external: String) : UField {
 
@@ -62,12 +77,12 @@ interface UField {
          * @name - name to be used as internal and external names
          * @return new field with internal and external names same
          */
-        fun of(name: String): UField = SimpleField(name, name)
+        fun of(name: String): UField = SimpleImmutableField(name, name)
 
         /**
          * @return new field with given internal and external names
          */
-        fun of(internalName: String, externalName: String): UField = SimpleField(internalName, externalName)
+        fun of(internalName: String, externalName: String): UField = SimpleImmutableField(internalName, externalName)
 
         /**
          * Creates a new field, taking parameters from the given one and setting isPublic() flag to false

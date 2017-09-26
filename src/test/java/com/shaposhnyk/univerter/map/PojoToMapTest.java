@@ -22,7 +22,7 @@ import static org.hamcrest.CoreMatchers.not;
 /**
  * Converting from POJO objects to a map example. This is also can be used to produce a JSON from a map
  */
-public class PojoToMapTests extends ConverterBase {
+public class PojoToMapTest extends ConverterBase {
 
     private static final UTriConsumer<UField, Object, Map<String, Object>> UWRITER = (f, s, ctx) -> ctx.put(f.externalName(), s);
 
@@ -158,12 +158,12 @@ public class PojoToMapTests extends ConverterBase {
 
         return UCObjects.Builder.of(fItems)
                 .ofSourceType(String.class)
-                .ofContextMapF(PojoToMapTests::newListOfMaps)
+                .ofContextMapF(PojoToMapTest::newListOfMaps)
                 .iterateOn(q -> findObjectsByQuery(q))
                 .pipeTo(
                         UCObjects.Builder.of(fObject)
                                 .ofSourceType(MyObject.class)
-                                .ofContextMap(PojoToMapTests::addSubMap)
+                                .ofContextMap(PojoToMapTest::addSubMap)
                                 .field(of("name", MyObject::getName).decorateJ(String::toUpperCase))
                                 .field(of("myList", MyObject::getArray).mapJ((String s) -> Arrays.asList(s.split(","))))
                                 .field(of("myInt", MyObject::getNumberLike)
@@ -255,7 +255,7 @@ public class PojoToMapTests extends ConverterBase {
                 .field(
                         UCObjects.Builder.of(subObjF)
                                 .ofSourceMap(MyObject::getSubObject)
-                                .ofContextMapF(PojoToMapTests::addSubMapField)
+                                .ofContextMapF(PojoToMapTest::addSubMapField)
                                 .field(of("subId", MySubObject::getValue).mapJ((Integer i) -> i.toString()))
                                 .field(of("subName", MySubObject::getName).decorateJ(String::toLowerCase))
                                 .build()

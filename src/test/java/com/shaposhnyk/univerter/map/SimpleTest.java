@@ -18,7 +18,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 /**
  * UField convertion tests
  */
-public class SimpleTests extends ConverterBase {
+public class SimpleTest extends ConverterBase {
 
     @Test
     public void simpleConverter() {

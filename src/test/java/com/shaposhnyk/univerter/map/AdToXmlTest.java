@@ -34,7 +34,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 /**
  * Converting from POJO objects to a map example. This is also can be used to produce a JSON from a map
  */
-public class AdToXmlTests extends ConverterBase {
+public class AdToXmlTest extends ConverterBase {
     UField root = UField.Factory.of("root");
     UField item = UField.Factory.of("ldapItem");
 
@@ -100,7 +100,7 @@ public class AdToXmlTests extends ConverterBase {
             converter.consume(sr, xRoot);
         } catch (Exception e) {
             Assert.assertThat(e.getStackTrace()[0].getMethodName(), equalTo("generated"));
-            Assert.assertThat(e.getStackTrace()[0].getFileName(), containsString("SimpleField"));
+            Assert.assertThat(e.getStackTrace()[0].getFileName(), containsString("SimpleImmutableField"));
             Assert.assertThat(e.getStackTrace()[0].getFileName(), containsString("ldapItem"));
         }
     }
