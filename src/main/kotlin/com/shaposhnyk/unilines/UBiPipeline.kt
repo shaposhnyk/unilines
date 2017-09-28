@@ -1,4 +1,4 @@
-package com.shaposhnyk.univerter
+package com.shaposhnyk.unilines
 
 /**
  * Structured UBiPipeline, which consumes a source object (T) and a working context (C)

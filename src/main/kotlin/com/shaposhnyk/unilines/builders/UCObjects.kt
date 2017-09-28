@@ -1,7 +1,7 @@
-package com.shaposhnyk.univerter.builders
+package com.shaposhnyk.unilines.builders
 
-import com.shaposhnyk.univerter.UBiPipeline
-import com.shaposhnyk.univerter.UField
+import com.shaposhnyk.unilines.UBiPipeline
+import com.shaposhnyk.unilines.UField
 
 /**
  * Converting objects - converters composed from other converters.
@@ -66,7 +66,7 @@ class UCObjects {
                 val ctx1 = ctxFx(workingCtx)
                 fields.forEach { it.consume(s1, ctx1) }
             } catch (e: RuntimeException) {
-                val trace = StackTraceElement("com.shaposhnyk.univerter", "generated", f.toString(), 1)
+                val trace = StackTraceElement("com.shaposhnyk.unilines", "generated", f.toString(), 1)
                 e.stackTrace = arrayOf(trace).plus(e.stackTrace)
                 throw e
             }

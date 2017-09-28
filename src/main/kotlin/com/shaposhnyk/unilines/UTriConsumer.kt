@@ -1,4 +1,4 @@
-package com.shaposhnyk.univerter
+package com.shaposhnyk.unilines
 
 /**
  * Consumer which takes 3 inputs.

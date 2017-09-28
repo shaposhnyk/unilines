@@ -4,12 +4,22 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.shaposhnyk.univerter</groupId>
-    <artifactId>univerter</artifactId>
+    <groupId>com.shaposhnyk.unilines</groupId>
+    <artifactId>unilines</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>Univerter - Universal Conversion Pipelines</name>
+    <name>UniLines</name>
+    <description>Universal Conversion Pipelines</description>
+    <url>https://github.com/shaposhnyk/</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://github.com/shaposhnyk/unilines/blob/master/LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -87,7 +97,7 @@
                 <version>3.5.1</version>
                 <configuration>
                     <source>1.8</source>
-                    <target>1.8</target>
+                    <target>1.6</target>
                 </configuration>
                 <executions>
                     <!-- Replacing default-compile as it is treated specially by maven -->

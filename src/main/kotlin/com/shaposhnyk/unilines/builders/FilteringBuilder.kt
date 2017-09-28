@@ -1,6 +1,6 @@
-package com.shaposhnyk.univerter.builders
+package com.shaposhnyk.unilines.builders
 
-import com.shaposhnyk.univerter.UBiPipeline
+import com.shaposhnyk.unilines.UBiPipeline
 import java.util.function.Predicate
 
 /**

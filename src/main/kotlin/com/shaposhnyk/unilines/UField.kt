@@ -1,4 +1,4 @@
-package com.shaposhnyk.univerter
+package com.shaposhnyk.unilines
 
 /**
  * Mapping Field interface, with a factory companion object

@@ -1,4 +1,4 @@
-package com.shaposhnyk.univerter.map.helpers;
+package com.shaposhnyk.unilines.map.helpers;
 
 /**
  * Test sub-object

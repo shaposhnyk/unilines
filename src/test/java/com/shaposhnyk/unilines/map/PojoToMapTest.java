@@ -1,12 +1,12 @@
-package com.shaposhnyk.univerter.map;
+package com.shaposhnyk.unilines.map;
 
-import com.shaposhnyk.univerter.UBiPipeline;
-import com.shaposhnyk.univerter.UField;
-import com.shaposhnyk.univerter.UTriConsumer;
-import com.shaposhnyk.univerter.builders.UCField;
-import com.shaposhnyk.univerter.builders.UCObjects;
-import com.shaposhnyk.univerter.map.helpers.MyObject;
-import com.shaposhnyk.univerter.map.helpers.MySubObject;
+import com.shaposhnyk.unilines.UBiPipeline;
+import com.shaposhnyk.unilines.UField;
+import com.shaposhnyk.unilines.UTriConsumer;
+import com.shaposhnyk.unilines.builders.UCField;
+import com.shaposhnyk.unilines.builders.UCObjects;
+import com.shaposhnyk.unilines.map.helpers.MyObject;
+import com.shaposhnyk.unilines.map.helpers.MySubObject;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.collection.IsCollectionWithSize;
 import org.junit.Assert;

@@ -1,9 +1,9 @@
-package com.shaposhnyk.univerter.map;
+package com.shaposhnyk.unilines.map;
 
-import com.shaposhnyk.univerter.UBiPipeline;
-import com.shaposhnyk.univerter.UField;
-import com.shaposhnyk.univerter.builders.UCField;
-import com.shaposhnyk.univerter.builders.UCObjects;
+import com.shaposhnyk.unilines.UBiPipeline;
+import com.shaposhnyk.unilines.UField;
+import com.shaposhnyk.unilines.builders.UCField;
+import com.shaposhnyk.unilines.builders.UCObjects;
 import org.junit.Assert;
 import org.junit.Test;
 import org.w3c.dom.Document;

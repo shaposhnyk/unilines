@@ -1,7 +1,7 @@
-package com.shaposhnyk.univerter.builders
+package com.shaposhnyk.unilines.builders
 
-import com.shaposhnyk.univerter.UBiPipeline
-import com.shaposhnyk.univerter.UField
+import com.shaposhnyk.unilines.UBiPipeline
+import com.shaposhnyk.unilines.UField
 
 /**
  * Hierarchical converter builder.
