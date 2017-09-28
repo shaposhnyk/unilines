@@ -105,7 +105,7 @@ data class UHCBuilder<in T_IN, C_IN, T_OUT, C_OUT>(
     /**
      * Transform input to an iterable. Every item will be feed to downstream converter
      */
-    fun <X> iterateOn(afterSFx: (T_OUT?) -> Iterable<X>): UCObjects.IHCBuilder<T_IN, C_IN, X, C_OUT> {
+    fun <X> flatMap(afterSFx: (T_OUT?) -> Iterable<X>): UCObjects.IHCBuilder<T_IN, C_IN, X, C_OUT> {
         return UCObjects.IHCBuilder<T_IN, C_IN, X, C_OUT>(f, { afterSFx(sFx(it)) }, ctxFx)
     }
 

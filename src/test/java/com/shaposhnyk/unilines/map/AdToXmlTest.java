@@ -201,7 +201,7 @@ public class AdToXmlTest extends ConverterBase {
                 .ofSourceType(params)
                 .ofContextType(Document.class)
                 .ofContextMapF(this::createRootElement)
-                .iterateOn(query -> queryLdap(query))
+                .flatMap(query -> queryLdap(query))
                 .pipeTo(
                         UCObjects.Builder.of(item)
                                 .ofSourceType(SearchResult.class)
@@ -232,7 +232,7 @@ public class AdToXmlTest extends ConverterBase {
                 .ofSourceType(params)
                 .ofContextType(Document.class)
                 .ofContextMapF((UField f, Document xDoc) -> createRootElement(f, xDoc))
-                .iterateOn(query -> queryLdap(query))
+                .flatMap(query -> queryLdap(query))
                 .pipeTo(
                         UCObjects.Builder.of(item)
                                 .ofSourceType(SearchResult.class)

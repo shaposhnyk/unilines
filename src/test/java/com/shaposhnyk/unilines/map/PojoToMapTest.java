@@ -159,7 +159,7 @@ public class PojoToMapTest extends ConverterBase {
         return UCObjects.Builder.of(fItems)
                 .ofSourceType(String.class)
                 .ofContextMapF(PojoToMapTest::newListOfMaps)
-                .iterateOn(q -> findObjectsByQuery(q))
+                .flatMap(q -> findObjectsByQuery(q))
                 .pipeTo(
                         UCObjects.Builder.of(fObject)
                                 .ofSourceType(MyObject.class)
