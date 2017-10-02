@@ -30,6 +30,17 @@ interface UField {
      */
     fun description(): String = ""
 
+    /*
+     * builder style setters
+     */
+
+    fun isPublic(p: Boolean) = if (p) publicOf(this) else privateOf(this)
+
+    fun filtering(f: Boolean) = if (f) filterOf(this) else fieldOf(this)
+
+    fun description(descr: String) = withDescription(this, descr)
+
+
     /**
      * Factory companion object
      */
@@ -50,6 +61,20 @@ interface UField {
             override fun internalName(): String = this.internal
 
             override fun externalName(): String = this.external
+
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (other is SimpleImmutableField) {
+                    return internal == other.internal && external == other.external
+                } else if (other is UField) {
+                    return other.isPublic()
+                            && !other.hasFilter()
+                            && other.description().isEmpty()
+                            && internal == other.internalName()
+                            && external == other.externalName()
+                }
+                return false
+            }
         }
 
         /**
@@ -71,6 +96,35 @@ interface UField {
             override fun internalName(): String = this.internal
 
             override fun externalName(): String = this.external
+
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (other is SimpleImmutableField && public && !hasFilter && description.isEmpty()) {
+                    return internal == other.internalName() && external == other.externalName()
+                }
+                return areEqual(this, other)
+            }
+
+            override fun hashCode(): Int {
+                // Hope this will be optimized by compiler
+                // Anyway this could be faster than calculating hashCode() on 5 fields
+                // But if not this should be rewritten
+                return SimpleImmutableField(internal, external).hashCode()
+            }
+        }
+
+        /**
+         * @return true if second object is a UField and its properties are the same
+         */
+        fun areEqual(first: UField, second: Any?): Boolean {
+            if (second is UField) {
+                return first.internalName() == second.internalName()
+                        && first.externalName() == second.externalName()
+                        && first.isPublic() == second.isPublic()
+                        && first.hasFilter() == second.hasFilter()
+                        && first.description() == second.description()
+            }
+            return false
         }
 
         /**
@@ -115,6 +169,17 @@ interface UField {
                 return f
             }
             return ImmutableField(f.internalName(), f.externalName(), f.isPublic(), true, f.description())
+        }
+
+        /**
+         * Creates a new field, taking parameters from the given one and setting filter flag to false
+         * @return new field, basing on a given one with hasFilter() set to true
+         */
+        fun fieldOf(f: UField): UField {
+            if (f.hasFilter()) {
+                return f
+            }
+            return ImmutableField(f.internalName(), f.externalName(), f.isPublic(), false, f.description())
         }
 
         /**
