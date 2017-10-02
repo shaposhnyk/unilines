@@ -4,8 +4,8 @@ import com.shaposhnyk.unilines.UBiPipeline
 import com.shaposhnyk.unilines.UField
 
 /**
- * Hierarchical converter builder.
- * Such converter feeds it's input to sub-converters, with eventual transformation
+ * Hierarchical downstream builder.
+ * Such downstream feeds it's input to sub-converters, with eventual transformation
  * T_IN & C_IN  - input source object and working context types
  * T_OUT & C_OUT  - output source object and working context types, also the type of the sub-converters
  */
@@ -15,6 +15,8 @@ data class UHCBuilder<in T_IN, C_IN, T_OUT, C_OUT>(
         val ctxFx: (C_IN) -> C_OUT,
         val fields: MutableList<UBiPipeline<T_OUT, C_OUT>> = mutableListOf()
 ) : ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
+
+    override fun fields(): List<UBiPipeline<*, *>> = fields.toList()
 
     // Input type specifiers. Do nothing. Compilation time type-safety
 
@@ -103,14 +105,14 @@ data class UHCBuilder<in T_IN, C_IN, T_OUT, C_OUT>(
     }
 
     /**
-     * Transform input to an iterable. Every item will be feed to downstream converter
+     * Transform input to an iterable. Every item will be feed to downstream downstream
      */
-    fun <X> flatMap(afterSFx: (T_OUT?) -> Iterable<X>): UCObjects.IHCBuilder<T_IN, C_IN, X, C_OUT> {
-        return UCObjects.IHCBuilder<T_IN, C_IN, X, C_OUT>(f, { afterSFx(sFx(it)) }, ctxFx)
+    fun <X> flatMap(afterSFx: (T_OUT?) -> Iterable<X>): UCObjects.UCHFlatBuilder<T_IN, C_IN, X, C_OUT> {
+        return UCObjects.UCHFlatBuilder(f, { afterSFx(sFx(it)) }, ctxFx)
     }
 
     /**
-     * Add a sub-converter field to this Builder composed of multiple fields
+     * Add a sub-downstream field to this Builder composed of multiple fields
      * Output of transformation will be propagated to all fields
      */
     override fun field(converter: UBiPipeline<T_OUT, C_OUT>): ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
@@ -118,29 +120,16 @@ data class UHCBuilder<in T_IN, C_IN, T_OUT, C_OUT>(
         return this
     }
 
-    override fun fields(converters: Collection<UBiPipeline<T_OUT, C_OUT>>): ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
-        fields.addAll(converters)
-        return this
-    }
-
     /**
-     * Pipe to downstream converter. Same as field(converter).build()
-     */
-    fun pipeTo(downstream: UBiPipeline<T_OUT, C_OUT>): UBiPipeline<T_IN, C_IN> {
-        if (fields.size > 0) {
-            throw IllegalStateException("pipeTo is mutually exclusive with field()")
-        }
-        return UCObjects.ChainingBiPipeline(f, UCField.Simple(downstream, { t, c ->
-            val t1 = sFx(t)
-            val c1 = ctxFx(c)
-            downstream.consume(t1, c1)
-        }))
-    }
-
-    /**
-     * Builds new converter from the builder
+     * Builds new downstream from the builder
      */
     override fun build(): UBiPipeline<T_IN, C_IN> {
-        return UCObjects.DispatchingBiPipeline(f, fields.toList(), sFx, ctxFx)
+        return UCObjects.ChainingBiPipeline(f, fields.toList(), { t, c ->
+            val t1 = sFx(t)
+            val c1 = ctxFx(c)
+            fields.forEach { f ->
+                f.consume(t1, c1)
+            }
+        })
     }
 }

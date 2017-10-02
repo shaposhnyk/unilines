@@ -2,6 +2,7 @@ package com.shaposhnyk.unilines.builders
 
 import com.shaposhnyk.unilines.UBiPipeline
 import com.shaposhnyk.unilines.UField
+import com.shaposhnyk.unilines.UTriConsumer
 
 /**
  * Converting objects - converters composed from other converters.
@@ -11,7 +12,7 @@ class UCObjects {
 
     companion object Builder {
         /**
-         * @return hierarchical converter builder, which accepts sub-fields of type UBiPipeline<T,C>
+         * @return hierarchical downstream builder, which accepts sub-fields of type UBiPipeline<T,C>
          */
         fun <T, C> of(f: UField): UHCBuilder<T, C, T, C> {
             return UHCBuilder(f, { it }, { it })
@@ -19,67 +20,81 @@ class UCObjects {
     }
 
     /**
-     * A converter which delegates processing to another converter,
+     * A downstream which delegates processing to another downstream,
      * while exposing it in fields()
      */
     data class ChainingBiPipeline<in T, C>(
-            val f: UField,
-            val converter: UBiPipeline<T, C>
+            private val f: UField,
+            private val downstreams: List<UBiPipeline<*, *>>,
+            private val consumer: (T?, C) -> Unit
     ) : UField by f, UBiPipeline<T, C> {
-        override fun fields(): List<UBiPipeline<*, *>> = listOf(converter)
+        override fun fields(): List<UBiPipeline<*, *>> = downstreams
 
         override fun consume(sourceObj: T?, workingCtx: C) {
-            converter.consume(sourceObj, workingCtx)
+            consumer(sourceObj, workingCtx)
+        }
+
+        fun postProcess(postProcessor: (UField, UBiPipeline<*, *>, C) -> Unit): ChainingBiPipeline<T, C> {
+            assert(downstreams.size == 1)
+            return ChainingBiPipeline(f, downstreams, { _, c -> postProcessor(f, downstreams[0], c) })
+        }
+
+        fun postProcess(postProcessor: (C) -> Unit): ChainingBiPipeline<T, C> {
+            return ChainingBiPipeline(f, downstreams, { _, c -> postProcessor(c) })
+        }
+
+        fun postProcess(postProcessor: (UBiPipeline<*, *>, C) -> Unit): ChainingBiPipeline<T, C> {
+            return postProcess({ _, cnv, c -> postProcessor(cnv, c) })
+        }
+
+        fun postProcessJ(postProcessor: UTriConsumer<UField, UBiPipeline<*, *>, C>): ChainingBiPipeline<T, C> {
+            return postProcess({ f, cnv, c -> postProcessor.accept(f, cnv, c) })
         }
     }
 
-    data class FlatChainingBiPipeline<in TIN, CIN, TOUT, COUT>(
-            val f: UField,
-            val sFx: (TIN?) -> Iterable<TOUT>,
-            val ctxFx: (CIN) -> COUT,
-            val converter: UBiPipeline<TOUT, COUT>
-    ) : UField by f, UBiPipeline<TIN, CIN> {
-        override fun fields(): List<UBiPipeline<*, *>> = listOf(converter)
+    data class UCHFlatBuilder<in T_IN, C_IN, T_OUT, C_OUT>(
+            private val f: UField,
+            private val sFx: (T_IN?) -> Iterable<T_OUT>,
+            private val ctxFx: (C_IN) -> C_OUT,
+            private val downstreams: MutableList<UBiPipeline<T_OUT, C_OUT>> = mutableListOf()
+    ) : ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
 
-        override fun consume(sourceObj: TIN?, workingCtx: CIN) {
-            val s1 = sFx(sourceObj)
-            val c1 = ctxFx(workingCtx)
-            s1.forEach { converter.consume(it, c1) }
+        override fun fields(): List<UBiPipeline<*, *>> = downstreams.toList()
+
+        override fun field(converter: UBiPipeline<T_OUT, C_OUT>): ComposingBuilder<T_IN, C_IN, T_OUT, C_OUT> {
+            downstreams.add(converter)
+            return this
+        }
+
+        override fun build(): UBiPipeline<T_IN, C_IN> {
+            return FlatChainingBiPipeline(f, downstreams.toList(), sFx, ctxFx, { t, c ->
+                downstreams.forEach { d ->
+                    d.consume(t, c)
+                }
+            })
         }
     }
 
     /**
-     * A converter which delegates processing to several other converters,
-     * while exposing then in fields()
+     * A downstream which delegates processing to another downstream,
+     * while exposing it in fields()
      */
-    data class DispatchingBiPipeline<in TIN, CIN, TOUT, COUT>(
-            val f: UField,
-            val fields: List<UBiPipeline<TOUT, COUT>>, // sub-converters
-            val sourceFx: (TIN?) -> TOUT?, // source object transformer
-            val ctxFx: (CIN) -> COUT) // working context transfromer
-        : UField by f, UBiPipeline<TIN, CIN> {
-        override fun fields(): List<UBiPipeline<*, *>> = fields
+    data class FlatChainingBiPipeline<in T_IN, C_IN, T_OUT, C_OUT>(
+            private val f: UField,
+            private val downstreams: List<UBiPipeline<*, *>>,
+            private val sFx: (T_IN?) -> Iterable<T_OUT>,
+            private val ctxFx: (C_IN) -> C_OUT,
+            private val consumer: (T_OUT, C_OUT) -> Unit
+    ) : UField by f, UBiPipeline<T_IN, C_IN> {
 
-        override fun consume(sourceObj: TIN?, workingCtx: CIN) {
-            try {
-                val s1 = sourceFx(sourceObj)
-                val ctx1 = ctxFx(workingCtx)
-                fields.forEach { it.consume(s1, ctx1) }
-            } catch (e: RuntimeException) {
-                val trace = StackTraceElement("com.shaposhnyk.unilines", "generated", f.toString(), 1)
-                e.stackTrace = arrayOf(trace).plus(e.stackTrace)
-                throw e
+        override fun fields(): List<UBiPipeline<*, *>> = downstreams
+
+        override fun consume(sourceObj: T_IN?, workingCtx: C_IN) {
+            val t1s = sFx(sourceObj)
+            val c1 = ctxFx(workingCtx)
+            t1s.forEach { t1 ->
+                consumer(t1, c1)
             }
-        }
-    }
-
-    data class IHCBuilder<in T_IN, C_IN, T_OUT, C_OUT>(
-            val f: UField,
-            val sFx: (T_IN?) -> Iterable<T_OUT>,
-            val ctxFx: (C_IN) -> C_OUT
-    ) {
-        fun pipeTo(dispatcher: UBiPipeline<T_OUT, C_OUT>): UBiPipeline<T_IN, C_IN> {
-            return FlatChainingBiPipeline(f, sFx, ctxFx, dispatcher)
         }
     }
 }

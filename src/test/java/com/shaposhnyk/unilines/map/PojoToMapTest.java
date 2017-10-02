@@ -197,7 +197,7 @@ public class PojoToMapTest extends ConverterBase {
                 )
                 .field(
                         // here we suppose that calling myObject.getSubObject() is expensive
-                        // so it does make sense to call it once, using simple mapping hierarchical converter
+                        // so it does make sense to call it once, using simple mapping hierarchical downstream
                         // however, note, that we are still writing the output to the same map
                         UCObjects.Builder.of(subObjF)
                                 .ofSourceMap(MyObject::getSubObject)
