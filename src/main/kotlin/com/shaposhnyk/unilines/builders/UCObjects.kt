@@ -31,7 +31,11 @@ class UCObjects {
         override fun fields(): List<UBiPipeline<*, *>> = downstreams
 
         override fun consume(sourceObj: T?, workingCtx: C) {
-            consumer(sourceObj, workingCtx)
+            try {
+                consumer(sourceObj, workingCtx)
+            } catch (e: RuntimeException) {
+                UCField.defaultErrorHandler(this, e)
+            }
         }
 
         fun postProcess(postProcessor: (UField, UBiPipeline<*, *>, C) -> Unit): ChainingBiPipeline<T, C> {
@@ -90,10 +94,16 @@ class UCObjects {
         override fun fields(): List<UBiPipeline<*, *>> = downstreams
 
         override fun consume(sourceObj: T_IN?, workingCtx: C_IN) {
-            val t1s = sFx(sourceObj)
-            val c1 = ctxFx(workingCtx)
-            t1s.forEach { t1 ->
-                consumer(t1, c1)
+            var cnt = 0
+            try {
+                val t1s = sFx(sourceObj)
+                val c1 = ctxFx(workingCtx)
+                t1s.forEach { it ->
+                    cnt += 1
+                    consumer(it, c1)
+                }
+            } catch (e: RuntimeException) {
+                UCField.defaultErrorHandler(this, e, cnt)
             }
         }
     }

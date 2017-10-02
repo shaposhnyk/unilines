@@ -10,6 +10,11 @@ import java.util.function.Predicate
 interface ExtractingBuilder<T, C, R> : UBiPipeline<T, C> {
 
     /**
+     * @return extracting function
+     */
+    fun extractor(): (T?) -> R?
+
+    /**
      * Creates a new ConverterBuilder, which will process only if extracted value matches the predicate
      */
     fun postFilter(predicate: (R?) -> Boolean): ExtractingBuilder<T, C, R>

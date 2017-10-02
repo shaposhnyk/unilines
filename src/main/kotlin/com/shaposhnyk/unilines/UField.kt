@@ -34,10 +34,19 @@ interface UField {
      * builder style setters
      */
 
+    /**
+     * @return new instance of field with isPublic set to given value
+     */
     fun isPublic(p: Boolean) = if (p) publicOf(this) else privateOf(this)
 
+    /**
+     * @return new instance of field with hasFilter set to given value
+     */
     fun filtering(f: Boolean) = if (f) filterOf(this) else fieldOf(this)
 
+    /**
+     * @return new instance of field with a given description
+     */
     fun description(descr: String) = withDescription(this, descr)
 
 
