@@ -1,7 +1,7 @@
 # UniLines
 Universal Data-Conversion Pipelines
 
-[![Build Status](https://api.travis-ci.org/shaposhnyk/unilines.svg?branch=master)](https://travis-ci.org/rest-assured/rest-assured)
+[![Build Status](https://api.travis-ci.org/shaposhnyk/unilines.svg?branch=master)](https://travis-ci.org/shaposhnyk/unilines)
 
 ## Motivation
  Several projects, I was working on, were exposing third-system's data over REST interfaces using JSON or XML.
